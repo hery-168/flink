@@ -20,7 +20,7 @@ package org.apache.flink.table.api.stream.table.stringexpr
 
 import org.apache.flink.api.scala._
 import org.apache.flink.table.api.scala._
-import org.apache.flink.table.expressions.Literal
+import org.apache.flink.table.expressions.utils.Func23
 import org.apache.flink.table.utils.TableTestBase
 import org.junit.Test
 
@@ -89,7 +89,7 @@ class CalcStringExpressionTest extends TableTestBase {
     val util = streamTestUtil()
     val t = util.addTable[(Int, Long, String)]('int, 'long, 'string)
 
-    val resScala = t.filter(Literal(false)).select('int as 'myInt, 'string)
+    val resScala = t.filter(false).select('int as 'myInt, 'string)
     val resJava = t.filter("false").select("int as myInt, string")
     verifyTableEquals(resJava, resScala)
   }
@@ -99,7 +99,7 @@ class CalcStringExpressionTest extends TableTestBase {
     val util = streamTestUtil()
     val t = util.addTable[(Int, Long, String)]('int, 'long, 'string)
 
-    val resScala = t.filter(Literal(true)).select('int as 'myInt, 'string)
+    val resScala = t.filter(true).select('int as 'myInt, 'string)
     val resJava = t.filter("true").select("int as myInt, string")
     verifyTableEquals(resJava, resScala)
   }
@@ -164,6 +164,18 @@ class CalcStringExpressionTest extends TableTestBase {
 
     val t1 = t.dropColumns('a, 'c)
     val t2 = t.dropColumns("a,c")
+
+    verifyTableEquals(t1, t2)
+  }
+
+  @Test
+  def testMap(): Unit = {
+    val util = streamTestUtil()
+    val t = util.addTable[(Int, Long, String)]("Table3",'a, 'b, 'c)
+    util.tableEnv.registerFunction("func", Func23)
+
+    val t1 = t.map("func(a, b, c)")
+    val t2 = t.map(Func23('a, 'b, 'c))
 
     verifyTableEquals(t1, t2)
   }
