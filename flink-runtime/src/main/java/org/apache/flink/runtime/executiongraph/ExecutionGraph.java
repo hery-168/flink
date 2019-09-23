@@ -893,13 +893,14 @@ public class ExecutionGraph implements AccessExecutionGraph {
 
 			final CompletableFuture<Void> newSchedulingFuture;
 
+			// 匹配调度模式，进行相应的调度，现在只有两种调度模式
 			switch (scheduleMode) {
 
 				case LAZY_FROM_SOURCES:
 					newSchedulingFuture = scheduleLazy(slotProvider);
 					break;
 
-				case EAGER:
+				case EAGER://EAGER 模式
 					newSchedulingFuture = scheduleEager(slotProvider, allocationTimeout);
 					break;
 
@@ -990,6 +991,7 @@ public class ExecutionGraph implements AccessExecutionGraph {
 			(Collection<Execution> executionsToDeploy) -> {
 				for (Execution execution : executionsToDeploy) {
 					try {
+						// 循环把每个Execution 进行发布执行
 						execution.deploy();
 					} catch (Throwable t) {
 						throw new CompletionException(

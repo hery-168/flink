@@ -620,7 +620,7 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 	@Override
 	public JobExecutionResult executeJobBlocking(JobGraph job) throws JobExecutionException, InterruptedException {
 		checkNotNull(job, "job is null");
-
+		// 把job提交给jobMaster
 		final CompletableFuture<JobSubmissionResult> submissionFuture = submitJob(job);
 
 		final CompletableFuture<JobResult> jobResultFuture = submissionFuture.thenCompose(
@@ -649,12 +649,13 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 		jobGraph.setAllowQueuedScheduling(true);
 
 		final CompletableFuture<InetSocketAddress> blobServerAddressFuture = createBlobServerAddress(dispatcherGatewayFuture);
-
+		// 上传jar
 		final CompletableFuture<Void> jarUploadFuture = uploadAndSetJobFiles(blobServerAddressFuture, jobGraph);
 
 		final CompletableFuture<Acknowledge> acknowledgeCompletableFuture = jarUploadFuture
 			.thenCombine(
 				dispatcherGatewayFuture,
+				// 这里执行真正的提交dispatcherGateway.submitJob
 				(Void ack, DispatcherGateway dispatcherGateway) -> dispatcherGateway.submitJob(jobGraph, rpcTimeout))
 			.thenCompose(Function.identity());
 

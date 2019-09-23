@@ -47,6 +47,7 @@ public class StreamFlatMap<IN, OUT>
 	@Override
 	public void processElement(StreamRecord<IN> element) throws Exception {
 		collector.setTimestamp(element);
+		// 执行用户缩写的代码逻辑，processElement 这个方法被 StreamInputProcessor#processInput，真正的执行代码在streamOperator.processElement(record) 进行调用
 		userFunction.flatMap(element.getValue(), collector);
 	}
 }

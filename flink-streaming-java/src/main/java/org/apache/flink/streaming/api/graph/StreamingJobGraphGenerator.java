@@ -136,12 +136,14 @@ public class StreamingJobGraphGenerator {
 	}
 
 	private JobGraph createJobGraph() {
-
+		// 设置启动模式为所有节点均在一开始就启动
+		//对于流所有vertices需要立即启动，相对的模式，LAZY_FROM_SOURCES，task只有在input ready时，才会创建
 		// make sure that all vertices start immediately
 		jobGraph.setScheduleMode(ScheduleMode.EAGER);
 
 		// Generate deterministic hashes for the nodes in order to identify them across
 		// submission iff they didn't change.
+		//为每个node创建唯一的hashid，这样多次提交时能够定位到，最终返回node id和hash id的对应
 		Map<Integer, byte[]> hashes = defaultStreamGraphHasher.traverseStreamGraphAndGenerateHashes(streamGraph);
 
 		// Generate legacy version hashes for backwards compatibility
@@ -151,18 +153,21 @@ public class StreamingJobGraphGenerator {
 		}
 
 		Map<Integer, List<Tuple2<byte[], byte[]>>> chainedOperatorHashes = new HashMap<>();
-
+		//核心逻辑，创建JobVertex，JobEdge
+		//这里的逻辑大致可以理解为，挨个遍历节点，如果该节点是一个chain的头节点，
+		// 就生成一个JobVertex，如果不是头节点，就要把自身配置并入头节点，然后把头节点和自己的出边相连；对于不能chain的节点，当作只有头节点处理即可
 		setChaining(hashes, legacyHashes, chainedOperatorHashes);
-
+		//设置输入边edge 只是将每个vertex的入边信息，写入该vertex所对应的StreamConfig里面
 		setPhysicalEdges();
-
+		//设置slot共享group
 		setSlotSharingAndCoLocation();
-
+		//配置检查点
 		configureCheckpointing();
 
 		JobGraphGenerator.addUserArtifactEntries(streamGraph.getEnvironment().getCachedFiles(), jobGraph);
 
 		// set the ExecutionConfig last when it has been finalized
+		// 传递执行环境配置
 		try {
 			jobGraph.setExecutionConfig(streamGraph.getExecutionConfig());
 		}

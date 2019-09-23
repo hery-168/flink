@@ -386,14 +386,14 @@ public class StreamGraph extends StreamingPlan {
 				null);
 
 	}
-
+	//addEdge的实现，会合并一些逻辑节点
 	private void addEdgeInternal(Integer upStreamVertexID,
 			Integer downStreamVertexID,
 			int typeNumber,
 			StreamPartitioner<?> partitioner,
 			List<String> outputNames,
 			OutputTag outputTag) {
-
+		//如果输入边是侧输出节点，则把side的输入边作为本节点的输入边，并递归调用
 		if (virtualSideOutputNodes.containsKey(upStreamVertexID)) {
 			int virtualId = upStreamVertexID;
 			upStreamVertexID = virtualSideOutputNodes.get(virtualId).f0;
@@ -401,7 +401,7 @@ public class StreamGraph extends StreamingPlan {
 				outputTag = virtualSideOutputNodes.get(virtualId).f1;
 			}
 			addEdgeInternal(upStreamVertexID, downStreamVertexID, typeNumber, partitioner, null, outputTag);
-		} else if (virtualSelectNodes.containsKey(upStreamVertexID)) {
+		} else if (virtualSelectNodes.containsKey(upStreamVertexID)) {//如果输入边是select，则把select的输入边作为本节点的输入边
 			int virtualId = upStreamVertexID;
 			upStreamVertexID = virtualSelectNodes.get(virtualId).f0;
 			if (outputNames.isEmpty()) {
@@ -409,14 +409,14 @@ public class StreamGraph extends StreamingPlan {
 				outputNames = virtualSelectNodes.get(virtualId).f1;
 			}
 			addEdgeInternal(upStreamVertexID, downStreamVertexID, typeNumber, partitioner, outputNames, outputTag);
-		} else if (virtualPartitionNodes.containsKey(upStreamVertexID)) {
+		} else if (virtualPartitionNodes.containsKey(upStreamVertexID)) {//如果是partition节点
 			int virtualId = upStreamVertexID;
 			upStreamVertexID = virtualPartitionNodes.get(virtualId).f0;
 			if (partitioner == null) {
 				partitioner = virtualPartitionNodes.get(virtualId).f1;
 			}
 			addEdgeInternal(upStreamVertexID, downStreamVertexID, typeNumber, partitioner, outputNames, outputTag);
-		} else {
+		} else {//正常的edge处理逻辑
 			StreamNode upstreamNode = getStreamNode(upStreamVertexID);
 			StreamNode downstreamNode = getStreamNode(downStreamVertexID);
 

@@ -1533,6 +1533,7 @@ public abstract class StreamExecutionEnvironment {
 		if (transformations.size() <= 0) {
 			throw new IllegalStateException("No operators defined in streaming topology. Cannot execute.");
 		}
+		// 生成StreamGraph
 		return StreamGraphGenerator.generate(this, transformations);
 	}
 

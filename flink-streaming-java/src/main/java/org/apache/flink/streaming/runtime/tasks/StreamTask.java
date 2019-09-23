@@ -297,6 +297,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			// let the task do its work
 			isRunning = true;
+			// 调用抽象方法run方法来执行，会进入到实现类的run方法进行
 			run();
 
 			// if this left the run() method cleanly despite the fact that this was canceled,

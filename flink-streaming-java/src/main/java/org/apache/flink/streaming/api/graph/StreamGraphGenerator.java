@@ -126,6 +126,7 @@ public class StreamGraphGenerator {
 
 	/**
 	 * This starts the actual transformation, beginning from the sinks.
+	 * StreamGraph的生成是从sink开始的
 	 */
 	private StreamGraph generateInternal(List<StreamTransformation<?>> transformations) {
 		for (StreamTransformation<?> transformation: transformations) {
@@ -139,6 +140,7 @@ public class StreamGraphGenerator {
 	 *
 	 * <p>This checks whether we already transformed it and exits early in that case. If not it
 	 * delegates to one of the transformation specific methods.
+	 * 这个方法的核心逻辑就是判断传入的steamOperator是哪种类型，并执行相应的操作
 	 */
 	private Collection<Integer> transform(StreamTransformation<?> transform) {
 
@@ -162,6 +164,7 @@ public class StreamGraphGenerator {
 		transform.getOutputType();
 
 		Collection<Integer> transformedIds;
+		// 这里对操作符的类型进行判断，并以此调用相应的处理逻辑.简而言之，处理的核心无非是递归的将该节点和节点的上游节点加入图
 		if (transform instanceof OneInputTransformation<?, ?>) {
 			transformedIds = transformOneInputTransform((OneInputTransformation<?, ?>) transform);
 		} else if (transform instanceof TwoInputTransformation<?, ?, ?>) {
@@ -187,7 +190,7 @@ public class StreamGraphGenerator {
 		} else {
 			throw new IllegalStateException("Unknown transformation: " + transform);
 		}
-
+		//注意这里和函数开始时的方法相对应，在有向图中要注意避免循环的产生
 		// need this check because the iterate transformation adds itself before
 		// transforming the feedback edges
 		if (!alreadyTransformed.containsKey(transform)) {
@@ -523,21 +526,23 @@ public class StreamGraphGenerator {
 
 	/**
 	 * Transforms a {@code OneInputTransformation}.
-	 *
+	 * 因为map，filter等常用操作都是OneInputStreamOperator
 	 * <p>This recursively transforms the inputs, creates a new {@code StreamNode} in the graph and
 	 * wired the inputs to this new node.
 	 */
 	private <IN, OUT> Collection<Integer> transformOneInputTransform(OneInputTransformation<IN, OUT> transform) {
 
 		Collection<Integer> inputIds = transform(transform.getInput());
-
+		// 在递归处理节点过程中，某个节点可能已经被其他子节点先处理过了，需要跳过
 		// the recursive call might have already transformed this
 		if (alreadyTransformed.containsKey(transform)) {
 			return alreadyTransformed.get(transform);
 		}
-
+		//这里是获取slotSharingGroup。这个group用来定义当前我们在处理的这个操作符可以跟什么操作符chain到一个slot里进行操作
+		//因为有时候我们可能不满意flink替我们做的chain聚合
+		//一个slot就是一个执行task的基本容器
 		String slotSharingGroup = determineSlotSharingGroup(transform.getSlotSharingGroup(), inputIds);
-
+		//把该operator加入图
 		streamGraph.addOperator(transform.getId(),
 				slotSharingGroup,
 				transform.getCoLocationGroupKey(),
@@ -545,15 +550,19 @@ public class StreamGraphGenerator {
 				transform.getInputType(),
 				transform.getOutputType(),
 				transform.getName());
-
+		//对于keyedStream，我们还要记录它的keySelector方法
+		//flink并不真正为每个keyedStream保存一个key，而是每次需要用到key的时候都使用keySelector方法进行计算
+		//因此，我们自定义的keySelector方法需要保证幂等性
+		//到后面介绍keyGroup的时候我们还会再次提到这一点
 		if (transform.getStateKeySelector() != null) {
 			TypeSerializer<?> keySerializer = transform.getStateKeyType().createSerializer(env.getConfig());
 			streamGraph.setOneInputStateKey(transform.getId(), transform.getStateKeySelector(), keySerializer);
 		}
-
+		//设置并行度，最大并行度
 		streamGraph.setParallelism(transform.getId(), transform.getParallelism());
 		streamGraph.setMaxParallelism(transform.getId(), transform.getMaxParallelism());
-
+		//为当前节点和它的依赖节点建立边
+		//这里可以看到之前提到的select union partition等逻辑节点被合并入edge的过程
 		for (Integer inputId: inputIds) {
 			streamGraph.addEdge(inputId, transform.getId(), 0);
 		}

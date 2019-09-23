@@ -1144,6 +1144,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		executionGraphAssignedFuture.thenRun(this::scheduleExecutionGraph);
 	}
 
+	// 调度执行ExecutionGraph
 	private void scheduleExecutionGraph() {
 		checkState(jobStatusListener == null);
 		// register self as job status change listener
@@ -1151,6 +1152,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		executionGraph.registerJobStatusListener(jobStatusListener);
 
 		try {
+			//调用ExecutionGraph的启动方法
 			executionGraph.scheduleForExecution();
 		}
 		catch (Throwable t) {

@@ -199,6 +199,7 @@ public class StreamInputProcessor<IN> {
 						synchronized (lock) {
 							numRecordsIn.inc();
 							streamOperator.setKeyContextElement1(record);
+							// 执行相关的操作 然后执行相应的子类的方法，对于StreamFlatMap来说，进入processElement方法，处理用户所写的代码逻辑
 							streamOperator.processElement(record);
 						}
 						return true;

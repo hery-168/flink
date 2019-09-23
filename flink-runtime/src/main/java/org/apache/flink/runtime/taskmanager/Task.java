@@ -708,6 +708,8 @@ public class Task implements Runnable, TaskActions, CheckpointListener {
 			executingThread.setContextClassLoader(userCodeClassLoader);
 
 			// run the invokable
+			// 运行invokable  对于WordCount例子来说，invokable就是OneInputStreamTask，
+			// 调用invoke的 时候，就会调用OneInputStreamTask的父类StreamTask的invoke方法
 			invokable.invoke();
 
 			// make sure, we enter the catch block if the task leaves the invoke() method due
