@@ -201,6 +201,7 @@ public class CliFrontend {
 		final PackagedProgram program;
 		try {
 			LOG.info("Building program from JAR file");
+			// build 程序
 			program = buildProgram(runOptions);
 		}
 		catch (FileNotFoundException e) {
@@ -210,6 +211,7 @@ public class CliFrontend {
 		final CustomCommandLine<?> customCommandLine = getActiveCustomCommandLine(commandLine);
 
 		try {
+			// 运行程序
 			runProgram(customCommandLine, commandLine, runOptions, program);
 		} finally {
 			program.deleteExtractedLibraries();
@@ -221,20 +223,29 @@ public class CliFrontend {
 			CommandLine commandLine,
 			RunOptions runOptions,
 			PackagedProgram program) throws ProgramInvocationException, FlinkException {
+		// 创建集群描述 获取yarnClusterDescriptor，用户创建集群
 		final ClusterDescriptor<T> clusterDescriptor = customCommandLine.createClusterDescriptor(commandLine);
 
 		try {
+			// 此处clusterId如果不为null，则表示是session模式
 			final T clusterId = customCommandLine.getClusterId(commandLine);
 
 			final ClusterClient<T> client;
 
 			// directly deploy the job if the cluster is started in job mode and detached
+			/**
+			 * Yarn模式：
+			 * 		1. Job模式：每个flink job 单独在yarn上声明一个flink集群
+			 *		2. Session模式：在集群中维护flink master，即一个yarn application master，运行多个job。
+			 */
 			if (clusterId == null && runOptions.getDetachedMode()) {
+				// job + DetachedMode模式 获取并行度
 				int parallelism = runOptions.getParallelism() == -1 ? defaultParallelism : runOptions.getParallelism();
-
+				// 从jar包中获取jobGraph
 				final JobGraph jobGraph = PackagedProgramUtils.createJobGraph(program, configuration, parallelism);
 
 				final ClusterSpecification clusterSpecification = customCommandLine.getClusterSpecification(commandLine);
+				// 发布jobGraph到集群
 				client = clusterDescriptor.deployJobCluster(
 					clusterSpecification,
 					jobGraph,
@@ -250,15 +261,19 @@ public class CliFrontend {
 			} else {
 				final Thread shutdownHook;
 				if (clusterId != null) {
+					// session模式
 					client = clusterDescriptor.retrieve(clusterId);
 					shutdownHook = null;
 				} else {
 					// also in job mode we have to deploy a session cluster because the job
 					// might consist of multiple parts (e.g. when using collect)
+					// job + non-DetachedMode模式
 					final ClusterSpecification clusterSpecification = customCommandLine.getClusterSpecification(commandLine);
+					// 新建一个小session集群，会启动ClusterEntrypoint，提供Dispatcher，ResourceManager和WebMonitorEndpoint等服务
 					client = clusterDescriptor.deploySessionCluster(clusterSpecification);
 					// if not running in detached mode, add a shutdown hook to shut down cluster if client exits
 					// there's a race-condition here if cli is killed before shutdown hook is installed
+					// 进行资源清理的钩子
 					if (!runOptions.getDetachedMode() && runOptions.isShutdownOnAttachedExit()) {
 						shutdownHook = ShutdownHookUtil.addShutdownHook(client::shutDownCluster, client.getClass().getSimpleName(), LOG);
 					} else {
@@ -283,7 +298,7 @@ public class CliFrontend {
 					} else if (ExecutionConfig.PARALLELISM_DEFAULT == userParallelism) {
 						userParallelism = defaultParallelism;
 					}
-
+					// 优化图，执行程序的远程提交
 					executeProgram(program, client, userParallelism);
 				} finally {
 					if (clusterId == null && !client.isDetached()) {
@@ -1031,6 +1046,7 @@ public class CliFrontend {
 	public int parseParameters(String[] args) {
 
 		// check for action
+		// 检查参数配置
 		if (args.length < 1) {
 			CliFrontendParser.printHelp(customCommandLines);
 			System.out.println("Please specify an action.");
@@ -1038,6 +1054,7 @@ public class CliFrontend {
 		}
 
 		// get action
+		// 获取执行指令
 		String action = args[0];
 
 		// remove action from parameters
@@ -1047,7 +1064,7 @@ public class CliFrontend {
 			// do action
 			switch (action) {
 				case ACTION_RUN:
-					run(params);
+					run(params);// 运行
 					return 0;
 				case ACTION_LIST:
 					list(params);
@@ -1101,6 +1118,8 @@ public class CliFrontend {
 
 	/**
 	 * Submits the job based on the arguments.
+	 * 根据参数提交 job
+	 * Client提交任务的入口，AM创建，提交程序
 	 */
 	public static void main(final String[] args) {
 		EnvironmentInformation.logEnvironmentInfo(LOG, "Command Line Client", args);

@@ -377,6 +377,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 	@Override
 	public ClusterClient<ApplicationId> deploySessionCluster(ClusterSpecification clusterSpecification) throws ClusterDeploymentException {
 		try {
+			// block，直到ApplicationMaster/JobManager在YARN上部署完毕
 			return deployInternal(
 				clusterSpecification,
 				"Flink session cluster",
@@ -505,7 +506,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			: ClusterEntrypoint.ExecutionMode.NORMAL;
 
 		flinkConfiguration.setString(ClusterEntrypoint.EXECUTION_MODE, executionMode.toString());
-
+		// 启动ApplicationMaster
 		ApplicationReport report = startAppMaster(
 			flinkConfiguration,
 			applicationName,
@@ -675,6 +676,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		final Path homeDir = fs.getHomeDirectory();
 
 		// hard coded check for the GoogleHDFS client because its not overriding the getScheme() method.
+		// 硬编码检查
 		if (!fs.getClass().getSimpleName().equals("GoogleHadoopFileSystem") &&
 				fs.getScheme().startsWith("file")) {
 			LOG.warn("The file system scheme is '" + fs.getScheme() + "'. This indicates that the "
@@ -707,7 +709,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		}
 
 		addLibFolderToShipFiles(systemShipFiles);
-
+		// ------------------ 准备Yarn所需的资源和文件 ------
 		// Set-up ApplicationSubmissionContext for the application
 
 		final ApplicationId appId = appContext.getApplicationId();
@@ -920,7 +922,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 				homeDir,
 				"");
 		}
-
+		// 启动ApplicationMasterContainer
+		// ------------------ 启动ApplicationMasterContainer ------
 		final ContainerLaunchContext amContainer = setupApplicationMasterContainer(
 			yarnClusterEntrypoint,
 			hasLogback,
@@ -1004,6 +1007,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		Thread deploymentFailureHook = new DeploymentFailureHook(yarnClient, yarnApplication, yarnFilesDir);
 		Runtime.getRuntime().addShutdownHook(deploymentFailureHook);
 		LOG.info("Submitting application master " + appId);
+
+		// 提交App 提交App 提交App 提交App 提交App
 		yarnClient.submitApplication(appContext);
 
 		LOG.info("Waiting for the cluster to be allocated");
@@ -1577,6 +1582,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 		}
 
 		startCommandValues.put("logging", logging);
+		// 与yarn集群打交道的Yarn终端，此Entrypoint会提供webMonitor、resourceManager、dispatcher 等服务
 		startCommandValues.put("class", yarnClusterEntrypoint);
 		startCommandValues.put("redirects",
 			"1> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/jobmanager.out " +

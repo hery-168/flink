@@ -419,7 +419,7 @@ public abstract class ClusterClient<T> {
 			ContextEnvironment.setAsContext(factory);
 
 			try {
-				// invoke main method
+				// invoke main method   通过反射执行main方法
 				prog.invokeInteractiveModeForExecution();
 				if (lastJobExecutionResult == null && factory.getLastEnvCreated() == null) {
 					throw new ProgramMissingJobException("The program didn't contain a Flink job.");
