@@ -288,6 +288,7 @@ public class JobManagerRunner implements LeaderContender, OnCompletionActions, A
 			leadershipOperation = leadershipOperation.thenCompose(
 				(ignored) -> {
 					synchronized (lock) {
+						// 验证job调度状态并且启动jobManager
 						return verifyJobSchedulingStatusAndStartJobManager(leaderSessionID);
 					}
 				});
@@ -304,6 +305,7 @@ public class JobManagerRunner implements LeaderContender, OnCompletionActions, A
 				if (jobSchedulingStatus == JobSchedulingStatus.DONE) {
 					return jobAlreadyDone();
 				} else {
+					// 启动jobMaster
 					return startJobMaster(leaderSessionId);
 				}
 			});
@@ -324,6 +326,7 @@ public class JobManagerRunner implements LeaderContender, OnCompletionActions, A
 
 		final CompletableFuture<Acknowledge> startFuture;
 		try {
+			// JobMaster启动
 			startFuture = jobMasterService.start(new JobMasterId(leaderSessionId));
 		} catch (Exception e) {
 			return FutureUtils.completedExceptionally(new FlinkException("Failed to start the JobMaster.", e));

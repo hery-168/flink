@@ -94,7 +94,7 @@ public abstract class AbstractDispatcherResourceManagerComponentFactory<T extend
 		this.resourceManagerFactory = resourceManagerFactory;
 		this.restEndpointFactory = restEndpointFactory;
 	}
-
+	// 在同一进程中启动Dispatcher，ResourceManager和WebMonitorEndpoint组件服务
 	@Override
 	public DispatcherResourceManagerComponent<T> create(
 			Configuration configuration,
@@ -158,6 +158,7 @@ public abstract class AbstractDispatcherResourceManagerComponentFactory<T extend
 				fatalErrorHandler);
 
 			log.debug("Starting Dispatcher REST endpoint.");
+			// 启动监控
 			webMonitorEndpoint.start();
 
 			final String hostname = getHostname(rpcService);
@@ -195,13 +196,15 @@ public abstract class AbstractDispatcherResourceManagerComponentFactory<T extend
 				historyServerArchivist);
 
 			log.debug("Starting ResourceManager.");
+			// 启动 ResourceManager 里面指明TaskExecutor（即TaskManager）的Main入口
 			resourceManager.start();
 			resourceManagerRetrievalService.start(resourceManagerGatewayRetriever);
 
 			log.debug("Starting Dispatcher.");
+			// 启动Dispatcher Dispatcher服务会处理client 的 submitjob，促使TaskExecutor上的任务执行
 			dispatcher.start();
 			dispatcherLeaderRetrievalService.start(dispatcherGatewayRetriever);
-
+			// 返回所有服务的封装类
 			return createDispatcherResourceManagerComponent(
 				dispatcher,
 				resourceManager,

@@ -318,7 +318,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 	public CompletableFuture<Acknowledge> start(final JobMasterId newJobMasterId) throws Exception {
 		// make sure we receive RPC and async calls
 		start();
-
+		// 开始jobExecution
 		return callAsyncWithoutFencing(() -> startJobExecution(newJobMasterId), RpcUtils.INF_TIMEOUT);
 	}
 
@@ -1032,11 +1032,11 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		}
 
 		setNewFencingToken(newJobMasterId);
-
+		// 启动JobMaster服务
 		startJobMasterServices();
 
 		log.info("Starting execution of job {} ({}) under job master id {}.", jobGraph.getName(), jobGraph.getJobID(), newJobMasterId);
-
+		// 调度ExecutionGraph
 		resetAndScheduleExecutionGraph();
 
 		return Acknowledge.get();
@@ -1140,7 +1140,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 					return null;
 				});
 		}
-
+		// 调度ExecutionGraph
 		executionGraphAssignedFuture.thenRun(this::scheduleExecutionGraph);
 	}
 

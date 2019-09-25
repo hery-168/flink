@@ -59,12 +59,14 @@ public class JobDispatcherFactory implements DispatcherFactory<MiniDispatcher> {
 			ArchivedExecutionGraphStore archivedExecutionGraphStore,
 			FatalErrorHandler fatalErrorHandler,
 			HistoryServerArchivist historyServerArchivist) throws Exception {
+		// 获取jobGraph
 		final JobGraph jobGraph = jobGraphRetriever.retrieveJobGraph(configuration);
 
 		final String executionModeValue = configuration.getString(EXECUTION_MODE);
 
 		final ClusterEntrypoint.ExecutionMode executionMode = ClusterEntrypoint.ExecutionMode.valueOf(executionModeValue);
 
+		// 返回MiniDispatcher
 		return new MiniDispatcher(
 			rpcService,
 			getEndpointId(),

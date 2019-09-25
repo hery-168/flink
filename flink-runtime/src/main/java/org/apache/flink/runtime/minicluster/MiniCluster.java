@@ -622,7 +622,7 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 		checkNotNull(job, "job is null");
 		// 把job提交给jobMaster
 		final CompletableFuture<JobSubmissionResult> submissionFuture = submitJob(job);
-
+		// 获取执行结果
 		final CompletableFuture<JobResult> jobResultFuture = submissionFuture.thenCompose(
 			(JobSubmissionResult ignored) -> requestJobResult(job.getJobID()));
 

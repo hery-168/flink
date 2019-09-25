@@ -263,11 +263,11 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 		log.info("Received JobGraph submission {} ({}).", jobGraph.getJobID(), jobGraph.getName());
 
 		try {
-			if (isDuplicateJob(jobGraph.getJobID())) {
+			if (isDuplicateJob(jobGraph.getJobID())) {// 判断job是否已经运行
 				return FutureUtils.completedExceptionally(
 					new JobSubmissionException(jobGraph.getJobID(), "Job has already been submitted."));
 			} else {
-				return internalSubmitJob(jobGraph);
+				return internalSubmitJob(jobGraph);// 内部提交job
 			}
 		} catch (FlinkException e) {
 			return FutureUtils.completedExceptionally(e);
@@ -295,7 +295,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 
 	private CompletableFuture<Acknowledge> internalSubmitJob(JobGraph jobGraph) {
 		log.info("Submitting job {} ({}).", jobGraph.getJobID(), jobGraph.getName());
-
+		// 存储并运行job
 		final CompletableFuture<Acknowledge> persistAndRunFuture = waitForTerminatingJobManager(jobGraph.getJobID(), jobGraph, this::persistAndRunJob)
 			.thenApply(ignored -> Acknowledge.get());
 
@@ -314,13 +314,14 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 	}
 
 	private CompletableFuture<Void> persistAndRunJob(JobGraph jobGraph) throws Exception {
+		// 存储jobGraph
 		submittedJobGraphStore.putJobGraph(new SubmittedJobGraph(jobGraph));
-
+		// 运行job
 		final CompletableFuture<Void> runJobFuture = runJob(jobGraph);
 
 		return runJobFuture.whenComplete(BiConsumerWithException.unchecked((Object ignored, Throwable throwable) -> {
 			if (throwable != null) {
-				submittedJobGraphStore.removeJobGraph(jobGraph.getJobID());
+				submittedJobGraphStore.removeJobGraph(jobGraph.getJobID());// 把存储的jobgraph移除
 			}
 		}));
 	}
@@ -346,7 +347,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 
 	private CompletableFuture<JobManagerRunner> createJobManagerRunner(JobGraph jobGraph) {
 		final RpcService rpcService = getRpcService();
-
+		// 创建jobManagerRunner
 		final CompletableFuture<JobManagerRunner> jobManagerRunnerFuture = CompletableFuture.supplyAsync(
 			CheckedSupplier.unchecked(() ->
 				jobManagerRunnerFactory.createJobManagerRunner(
@@ -359,7 +360,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 					new DefaultJobManagerJobMetricGroupFactory(jobManagerMetricGroup),
 					fatalErrorHandler)),
 			rpcService.getExecutor());
-
+		// 启动jobManagerRunner
 		return jobManagerRunnerFuture.thenApply(FunctionUtils.uncheckedFunction(this::startJobManagerRunner));
 	}
 
@@ -385,7 +386,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 					log.debug("There is a newer JobManagerRunner for the job {}.", jobId);
 				}
 			}, getMainThreadExecutor());
-
+		// 启动jobManagerRunner
 		jobManagerRunner.start();
 
 		return jobManagerRunner;

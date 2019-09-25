@@ -519,6 +519,7 @@ public class Task implements Runnable, TaskActions, CheckpointListener {
 	 */
 	public void startTaskThread() {
 		executingThread.start();
+		// 运行下面的run 方法
 	}
 
 	/**

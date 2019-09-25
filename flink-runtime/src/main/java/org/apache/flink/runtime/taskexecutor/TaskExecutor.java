@@ -462,6 +462,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 			// deserialize the pre-serialized information
 			final JobInformation jobInformation;
 			final TaskInformation taskInformation;
+			// 发序列号 job task 信息
 			try {
 				jobInformation = tdd.getSerializedJobInformation().deserializeValue(getClass().getClassLoader());
 				taskInformation = tdd.getSerializedTaskInformation().deserializeValue(getClass().getClassLoader());
