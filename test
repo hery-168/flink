@@ -1,0 +1,90 @@
+===============yarn方式=======================
+参考资料：https://blog.csdn.net/zhangjun5965/article/details/86660451
+
+flink yarnAM 启动过程 Entry point for Yarn per-job clusters
+YarnJobClusterEntrypoint.main 是入口方法
+	--runClusterEntrypoint
+		--startCluster()
+		    --runCluster()
+		        --dispatcherResourceManagerComponentFactory.create
+		            --resourceManagerFactory.createResourceManager
+		                -- return new YarnResourceManager
+		            --JobDispatcherFactory.createDispatcher
+		                --jobGraphRetriever.retrieveJobGraph
+		                --return new MiniDispatcher
+		            --resourceManager.start();
+		                -- rpc 调用,最后调用YarnResourceManager.onStart->startResourceManagerServices()->leaderElectionService.start(this)
+		                   ->grantLeadership->tryAcceptLeadership-slotManager.start;
+		             --dispatcher.start()
+		                -- rpc 调用,最后调用 MiniDispatcher.onStart->startDispatcherServices->leaderElectionService.start->   StandaloneLeaderElectionService.start
+		                    ->contender.grantLeadership->Dispatcher.grantLeadership->tryAcceptLeadershipAndRunJobs->runJob->createJobManagerRunner
+		                    -- jobManagerRunnerFactory.createJobManagerRunner
+		                    -- startJobManagerRunner(进行JobManager的启动)
+
+JobManager的启动
+jobManagerRunner.start()
+    --leaderElectionService.start(this)-> StandaloneLeaderElectionService.start ->contender.grantLeadership->JobManagerRunner.grantLeadership->verifyJobSchedulingStatusAndStartJobManager
+        ->startJobMaster->jobMasterService.start(JobMaster的启动)
+
+JobMaster的启动
+start(JobMasterId)->startJobExecution
+    -->startJobMasterServices
+    -->resetAndScheduleExecutionGraph
+        -->createAndRestoreExecutionGraph->ExecutionGraphBuilder.buildGraph
+        --scheduleExecutionGraph->executionGraph.scheduleForExecution(开始进行ExecutionGraph)
+
+ExecutionGraph的调度
+ExecutionGraph.scheduleForExecution->scheduleEager
+--> ejv(ExecutionJobVertex).allocateResourcesForAll->exec(Execution).allocateAndAssignSlotForExecution->slotProvider.allocateSlot
+-->execution.deploy()
+    -->vertex.createDeploymentDescriptor
+    --slot.getTaskManagerGateway()
+    --taskManagerGateway.submitTask->RpcTaskManagerGateway.submitTask->submitTask
+
+
+SlotPool.requestNewAllocatedSlot
+->requestSlotFromResourceManager(resourceManagerGateway, pendingRequest)->resourceManagerGateway.requestSlot->ResourceManager.requestSlot->slotManager.registerSlotRequest(slotRequest)
+
+
+
+SlotManager
+registerSlotRequest->internalRequestSlot->allocateResource->resourceActions.allocateResource->ResourceActionsImpl.allocateResource
+
+org.apache.flink.runtime.resourcemanager.ResourceManager.ResourceActionsImpl.allocateResource->startNewWorker->YarnResourceManager.startNewWorker->requestYarnContainer()
+
+
+YarnTaskExecutorRunner
+main->run->TaskManagerRunner.runTaskManager->taskManagerRunner.start()
+
+TaskExecutor
+submitTask
+    --> tdd.getSerializedTaskInformation()
+    -- task.startTaskThread->run
+        -->loadAndInstantiateInvokable
+        -->invokable.invoke()->StreamTask.invoke->run()->OneInputStreamTask.run->inputProcessor.processInput
+
+
+===============本地方式===flink1.8.0=======================
+1、LocalStreamEnvironment#execute
+2、MiniCluster#executeJobBlocking -> MiniCluster#submitJob
+3、dispatcherGateway.submitJob(jobGraph, rpcTimeout)
+4、Dispatcher#submitJob --> Dispatcher#internalSubmitJob --> Dispatcher#persistAndRunJob --> Dispatcher#runJob
+5、Dispatcher#createJobManagerRunner
+    –>jobManagerRunnerFactory.createJobManagerRunner
+    –>this::startJobManagerRunner
+6、JobManagerRunner#start 成功之后回调JobManagerRunner#grantLeadership
+7、JobManagerRunner#verifyJobSchedulingStatusAndStartJobManager --> JobManagerRunner#startJobMaster
+8、JobMasterService#start
+9、JobMaster#start --> JobMaster#startJobExecution
+    startJobMasterServices
+    resetAndScheduleExecutionGraph
+10、JobMaster#resetAndScheduleExecutionGraph --> JobMaster#scheduleExecutionGraph
+11、ExecutionGraph#scheduleForExecution --> ExecutionGraph#scheduleEager
+12、org.apache.flink.runtime.executiongraph.Execution#deploy
+13、taskManagerGateway.submitTask(deployment, rpcTimeout) taskManagerGateway这里是RpcTaskManagerGateway#submitTask --> TaskExecutor#submitTask
+14、task.startTaskThread();开始执行。在task线程的run方法中，通过invokable.invoke();反射的方式来执行任务。
+    对于WordCount例子来说，invokable就是OneInputStreamTask，调用invoke的 时候，就会调用OneInputStreamTask的父类StreamTask的invoke方法。
+    invoke方法中调用抽象方法run方法来执行，然后进入OneInputStreamTask#run
+15、StreamInputProcessor#processInput，真正的执行代码在streamOperator.processElement(record);中，
+    然后执行相应的子类的方法，对于StreamFlatMap来说，进入processElement方法，处理用户所写的代码逻辑
+参考：https://blog.csdn.net/zhangjun5965/article/details/88944774
