@@ -25,7 +25,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
 /**
  * Partitioner that selects the channel with a user defined partitioner function on a key.
- *
+ *通过Partitioner实例的partition方法(自定义的)将记录输出到下游
  * @param <K>
  *            Type of the key
  * @param <T>

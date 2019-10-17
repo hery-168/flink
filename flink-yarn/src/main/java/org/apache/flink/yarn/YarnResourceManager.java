@@ -391,7 +391,7 @@ public class YarnResourceManager extends ResourceManager<YarnWorkerNode> impleme
 							container.getResource(),
 							containerIdStr,
 							container.getNodeId().getHost());
-
+						// 启动NodeManager
 						nodeManagerClient.startContainer(container, taskExecutorLaunchContext);
 					} catch (Throwable t) {
 						log.error("Could not start TaskManager in container {}.", container.getId(), t);

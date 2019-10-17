@@ -26,7 +26,7 @@ import java.util.Random;
 /**
  * Partitioner that distributes the data equally by selecting one output channel
  * randomly.
- *
+ * 随机输出到下游的某个实例
  * @param <T>
  *            Type of the Tuple
  */
@@ -38,6 +38,7 @@ public class ShufflePartitioner<T> extends StreamPartitioner<T> {
 
 	@Override
 	public int selectChannel(SerializationDelegate<StreamRecord<T>> record) {
+		// 对每条记录，随机选择下游operator的某个Channel
 		return random.nextInt(numberOfChannels);
 	}
 

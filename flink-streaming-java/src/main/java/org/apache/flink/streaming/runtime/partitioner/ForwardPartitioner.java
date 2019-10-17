@@ -23,7 +23,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
 /**
  * Partitioner that forwards elements only to the locally running downstream operation.
- *
+ *将记录输出到下游本地的operator实例。ForwardPartitioner分区器要求上下游算子并行度一样。上下游Operator同属一个SubTasks
  * @param <T> Type of the elements in the Stream
  */
 @Internal

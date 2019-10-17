@@ -25,6 +25,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import java.io.Serializable;
 
 /**
+ * 流分区器
  * A special {@link ChannelSelector} for use in streaming programs.
  */
 @Internal

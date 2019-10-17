@@ -41,6 +41,7 @@ public class BroadcastPartitioner<T> extends StreamPartitioner<T> {
 
 	@Override
 	public boolean isBroadcast() {
+		// 启用广播模式，此时Channel选择器会选择下游所有Channel
 		return true;
 	}
 

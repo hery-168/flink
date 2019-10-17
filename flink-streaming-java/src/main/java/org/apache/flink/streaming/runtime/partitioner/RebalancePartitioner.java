@@ -26,7 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Partitioner that distributes the data equally by cycling through the output
  * channels.
- *
+ *将记录以循环的方式输出到下游Operator的每个实例
  * @param <T> Type of the elements in the Stream being rebalanced
  */
 @Internal

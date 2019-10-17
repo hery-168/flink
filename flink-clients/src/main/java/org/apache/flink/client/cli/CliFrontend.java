@@ -201,7 +201,7 @@ public class CliFrontend {
 		final PackagedProgram program;
 		try {
 			LOG.info("Building program from JAR file");
-			// build 程序
+			// //创建一个封装入口类、jar文件、classpath路径、用户配置参数的实例：PackagedProgram
 			program = buildProgram(runOptions);
 		}
 		catch (FileNotFoundException e) {
@@ -229,7 +229,7 @@ public class CliFrontend {
 		try {
 			// 此处clusterId如果不为null，则表示是session模式
 			final T clusterId = customCommandLine.getClusterId(commandLine);
-
+			// 根据集群类型创建不同的ClusterClient
 			final ClusterClient<T> client;
 
 			// directly deploy the job if the cluster is started in job mode and detached
@@ -298,7 +298,7 @@ public class CliFrontend {
 					} else if (ExecutionConfig.PARALLELISM_DEFAULT == userParallelism) {
 						userParallelism = defaultParallelism;
 					}
-					// 优化图，执行程序的远程提交
+					//最重要的方法，执行程序，通过client将程序提交到JobManager
 					executeProgram(program, client, userParallelism);
 				} finally {
 					if (clusterId == null && !client.isDetached()) {
@@ -824,7 +824,7 @@ public class CliFrontend {
 
 	protected void executeProgram(PackagedProgram program, ClusterClient<?> client, int parallelism) throws ProgramMissingJobException, ProgramInvocationException {
 		logAndSysout("Starting execution of program");
-
+		// CluterClient提交程序
 		final JobSubmissionResult result = client.run(program, parallelism);
 
 		if (null == result) {
@@ -1142,6 +1142,7 @@ public class CliFrontend {
 
 			SecurityUtils.install(new SecurityConfiguration(cli.configuration));
 			int retCode = SecurityUtils.getInstalledContext()
+					//解析参数，进行操作
 					.runSecured(() -> cli.parseParameters(args));
 			System.exit(retCode);
 		}

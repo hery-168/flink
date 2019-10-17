@@ -41,7 +41,10 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
  *
  * <p>In cases where the different parallelisms are not multiples of each other one or several
  * downstream operations will have a differing number of inputs from upstream operations.
- *
+ * 基于上下游Operator的并行度，将记录以循环的方式输出到下游Operator的每个实例。举例: 上游并行度是2，下游是4，
+ * 则上游一个并行度以循环的方式将记录输出到下游的两个并行度上;
+ * 上游另一个并行度以循环的方式将记录输出到下游另两个并行度上。
+ * 若上游并行度是4，下游并行度是2，则上游两个并行度将记录输出到下游一个并行度上；上游另两个并行度将记录输出到下游另一个并行度上
  * @param <T> Type of the elements in the Stream being rescaled
  */
 @Internal

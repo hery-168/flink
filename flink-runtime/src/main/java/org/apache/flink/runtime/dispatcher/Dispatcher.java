@@ -195,7 +195,9 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 
 	private void startDispatcherServices() throws Exception {
 		try {
+			// 启动存储jobGraph服务
 			submittedJobGraphStore.start(this);
+			// 启动执行服务
 			leaderElectionService.start(this);
 
 			registerDispatcherMetrics(jobManagerMetricGroup);
@@ -858,12 +860,13 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 		runAsyncWithoutFencing(
 			() -> {
 				log.info("Dispatcher {} was granted leadership with fencing token {}", getAddress(), newLeaderSessionID);
-
+				// 接收job
 				final CompletableFuture<Collection<JobGraph>> recoveredJobsFuture = recoveryOperation.thenApplyAsync(
 					FunctionUtils.uncheckedFunction(ignored -> recoverJobs()),
 					getRpcService().getExecutor());
 
 				final CompletableFuture<Boolean> fencingTokenFuture = recoveredJobsFuture.thenComposeAsync(
+						// 运行job
 					(Collection<JobGraph> recoveredJobs) -> tryAcceptLeadershipAndRunJobs(newLeaderSessionID, recoveredJobs),
 					getUnfencedMainThreadExecutor());
 

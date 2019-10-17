@@ -100,6 +100,7 @@ public class MiniDispatcher extends Dispatcher {
 
 	@Override
 	public CompletableFuture<Acknowledge> submitJob(JobGraph jobGraph, Time timeout) {
+		// 提交job
 		final CompletableFuture<Acknowledge> acknowledgeCompletableFuture = super.submitJob(jobGraph, timeout);
 
 		acknowledgeCompletableFuture.whenComplete(

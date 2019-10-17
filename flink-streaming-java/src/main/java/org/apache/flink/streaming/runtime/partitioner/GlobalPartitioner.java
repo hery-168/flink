@@ -23,7 +23,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
 /**
  * Partitioner that sends all elements to the downstream operator with subtask ID=0.
- *
+ *对每条记录，只选择下游operator的第一个Channel
  * @param <T> Type of the elements in the Stream being partitioned
  */
 @Internal

@@ -33,6 +33,7 @@ public interface ChannelSelector<T extends IOReadableWritable> {
 	 *
 	 * @param numberOfChannels the total number of output channels which are attached
 	 * 		to respective output gate.
+	 * 	                       初始化channel的数量
 	 */
 	void setup(int numberOfChannels);
 
@@ -44,12 +45,13 @@ public interface ChannelSelector<T extends IOReadableWritable> {
 	 * @param record the record to determine the output channels for.
 	 * @return an integer number which indicates the index of the output
 	 * 		channel through which the record shall be forwarded.
+	 * 	根据recore和channel的数量来决定发送到下游的哪个channel
 	 */
 	int selectChannel(T record);
 
 	/**
 	 * Returns whether the channel selector always selects all the output channels.
-	 *
+	 * 是否广播模式，决定是否将记录写入到下游的所有channel
 	 * @return true if the selector is for broadcast mode.
 	 */
 	boolean isBroadcast();

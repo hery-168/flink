@@ -392,8 +392,8 @@ public abstract class ClusterClient<T> {
 	public JobSubmissionResult run(PackagedProgram prog, int parallelism)
 			throws ProgramInvocationException, ProgramMissingJobException {
 		Thread.currentThread().setContextClassLoader(prog.getUserCodeClassLoader());
-		if (prog.isUsingProgramEntryPoint()) {
-
+		if (prog.isUsingProgramEntryPoint()) {// 如果包含入口类（非交互模式提交Job）
+			// JobWithJars是一个Flink数据流计划，包含了jar中所有的类，以及用于加载用户代码的ClassLoader
 			final JobWithJars jobWithJars;
 			if (hasUserJarsInClassPath(prog.getAllLibraries())) {
 				jobWithJars = prog.getPlanWithoutJars();
@@ -403,7 +403,7 @@ public abstract class ClusterClient<T> {
 
 			return run(jobWithJars, parallelism, prog.getSavepointSettings());
 		}
-		else if (prog.isUsingInteractiveMode()) {
+		else if (prog.isUsingInteractiveMode()) {// 使用交互模式提交Job
 			log.info("Starting program in interactive mode (detached: {})", isDetached());
 
 			final List<URL> libraries;

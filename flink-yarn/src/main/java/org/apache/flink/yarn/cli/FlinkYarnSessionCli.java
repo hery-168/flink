@@ -270,7 +270,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine<ApplicationId
 			YarnConfiguration yarnConfiguration,
 			String configurationDirectory,
 			CommandLine cmd) {
-
+		// 获取yarnClusterDescriptor
 		AbstractYarnClusterDescriptor yarnClusterDescriptor = getClusterDescriptor(
 			configuration,
 			yarnConfiguration,
@@ -1008,8 +1008,11 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine<ApplicationId
 			Configuration configuration,
 			YarnConfiguration yarnConfiguration,
 			String configurationDirectory) {
+		// 创建YarnClient
 		final YarnClient yarnClient = YarnClient.createYarnClient();
+		// 初始化YarnClient
 		yarnClient.init(yarnConfiguration);
+		// 启动YarnClient
 		yarnClient.start();
 
 		return new YarnClusterDescriptor(
