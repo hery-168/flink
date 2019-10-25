@@ -269,12 +269,13 @@ class TaskManager(
   /**
    * Central handling of actor messages. This method delegates to the more specialized
    * methods for handling certain classes of messages.
+    * 消息处理中心
    */
   override def handleMessage: Receive = {
     // task messages are most common and critical, we handle them first
     case message: TaskMessage => handleTaskMessage(message)
 
-    // messages for coordinating checkpoints
+    // messages for coordinating checkpoints checkpoint相关的消息处理
     case message: AbstractCheckpointMessage => handleCheckpointingMessage(message)
 
     case JobManagerLeaderAddress(address, newLeaderSessionID) =>
@@ -494,12 +495,13 @@ class TaskManager(
 
   /**
    * Handler for messages related to checkpoints.
-   *
+   * 处理checkpoint消息 主要是触发Checkpoint Barrier
    * @param actorMessage The checkpoint message.
    */
   private def handleCheckpointingMessage(actorMessage: AbstractCheckpointMessage): Unit = {
 
     actorMessage match {
+        // checkpoint触发的消息
       case message: TriggerCheckpoint =>
         val taskExecutionId = message.getTaskExecutionId
         val checkpointId = message.getCheckpointId
@@ -510,11 +512,12 @@ class TaskManager(
 
         val task = runningTasks.get(taskExecutionId)
         if (task != null) {
+          // 调用Task的triggerCheckpointBarrier 方法，来触发Checkpoint Barrier，
           task.triggerCheckpointBarrier(checkpointId, timestamp, checkpointOptions)
         } else {
           log.debug(s"TaskManager received a checkpoint request for unknown task $taskExecutionId.")
         }
-
+      // checkpoint完成通知的消息
       case message: NotifyCheckpointComplete =>
         val taskExecutionId = message.getTaskExecutionId
         val checkpointId = message.getCheckpointId
@@ -524,6 +527,7 @@ class TaskManager(
 
         val task = runningTasks.get(taskExecutionId)
         if (task != null) {
+          // 调用Task的notifyCheckpointComplete 方法，进行相关的处理
           task.notifyCheckpointComplete(checkpointId)
         } else {
           log.debug(

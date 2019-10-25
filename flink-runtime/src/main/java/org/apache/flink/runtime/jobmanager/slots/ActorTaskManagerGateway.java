@@ -46,157 +46,159 @@ import scala.reflect.ClassTag$;
  * Implementation of the {@link TaskManagerGateway} for {@link ActorGateway}.
  */
 public class ActorTaskManagerGateway implements TaskManagerGateway {
-	private final ActorGateway actorGateway;
+    private final ActorGateway actorGateway;
 
-	public ActorTaskManagerGateway(ActorGateway actorGateway) {
-		this.actorGateway = Preconditions.checkNotNull(actorGateway);
-	}
+    public ActorTaskManagerGateway(ActorGateway actorGateway) {
+        this.actorGateway = Preconditions.checkNotNull(actorGateway);
+    }
 
-	public ActorGateway getActorGateway() {
-		return actorGateway;
-	}
+    public ActorGateway getActorGateway() {
+        return actorGateway;
+    }
 
-	//-------------------------------------------------------------------------------
-	// Task manager rpc methods
-	//-------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------
+    // Task manager rpc methods
+    //-------------------------------------------------------------------------------
 
-	@Override
-	public String getAddress() {
-		return actorGateway.path();
-	}
+    @Override
+    public String getAddress() {
+        return actorGateway.path();
+    }
 
-	@Override
-	public CompletableFuture<StackTraceSampleResponse> requestStackTraceSample(
-			ExecutionAttemptID executionAttemptID,
-			int sampleId,
-			int numSamples,
-			Time delayBetweenSamples,
-			int maxStackTraceDepth,
-			Time timeout) {
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkArgument(numSamples > 0, "The number of samples must be greater than 0.");
-		Preconditions.checkNotNull(delayBetweenSamples);
-		Preconditions.checkArgument(maxStackTraceDepth >= 0, "The max stack trace depth must be greater or equal than 0.");
-		Preconditions.checkNotNull(timeout);
+    @Override
+    public CompletableFuture<StackTraceSampleResponse> requestStackTraceSample(
+            ExecutionAttemptID executionAttemptID,
+            int sampleId,
+            int numSamples,
+            Time delayBetweenSamples,
+            int maxStackTraceDepth,
+            Time timeout) {
+        Preconditions.checkNotNull(executionAttemptID);
+        Preconditions.checkArgument(numSamples > 0, "The number of samples must be greater than 0.");
+        Preconditions.checkNotNull(delayBetweenSamples);
+        Preconditions.checkArgument(maxStackTraceDepth >= 0, "The max stack trace depth must be greater or equal than 0.");
+        Preconditions.checkNotNull(timeout);
 
-		scala.concurrent.Future<StackTraceSampleResponse> stackTraceSampleResponseFuture = actorGateway.ask(
-			new StackTraceSampleMessages.TriggerStackTraceSample(
-				sampleId,
-				executionAttemptID,
-				numSamples,
-				delayBetweenSamples,
-				maxStackTraceDepth),
-			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<StackTraceSampleResponse>apply(StackTraceSampleResponse.class));
+        scala.concurrent.Future<StackTraceSampleResponse> stackTraceSampleResponseFuture = actorGateway.ask(
+                new StackTraceSampleMessages.TriggerStackTraceSample(
+                        sampleId,
+                        executionAttemptID,
+                        numSamples,
+                        delayBetweenSamples,
+                        maxStackTraceDepth),
+                new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+                .mapTo(ClassTag$.MODULE$.<StackTraceSampleResponse>apply(StackTraceSampleResponse.class));
 
-		return FutureUtils.toJava(stackTraceSampleResponseFuture);
-	}
+        return FutureUtils.toJava(stackTraceSampleResponseFuture);
+    }
 
-	@Override
-	public CompletableFuture<Acknowledge> submitTask(TaskDeploymentDescriptor tdd, Time timeout) {
-		Preconditions.checkNotNull(tdd);
-		Preconditions.checkNotNull(timeout);
+    @Override
+    public CompletableFuture<Acknowledge> submitTask(TaskDeploymentDescriptor tdd, Time timeout) {
+        Preconditions.checkNotNull(tdd);
+        Preconditions.checkNotNull(timeout);
 
-		scala.concurrent.Future<Acknowledge> submitResult = actorGateway.ask(
-			new TaskMessages.SubmitTask(tdd),
-			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+        scala.concurrent.Future<Acknowledge> submitResult = actorGateway.ask(
+                new TaskMessages.SubmitTask(tdd),
+                new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+                .mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 
-		return FutureUtils.toJava(submitResult);
-	}
+        return FutureUtils.toJava(submitResult);
+    }
 
-	@Override
-	public CompletableFuture<Acknowledge> stopTask(ExecutionAttemptID executionAttemptID, Time timeout) {
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkNotNull(timeout);
+    @Override
+    public CompletableFuture<Acknowledge> stopTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+        Preconditions.checkNotNull(executionAttemptID);
+        Preconditions.checkNotNull(timeout);
 
-		scala.concurrent.Future<Acknowledge> stopResult = actorGateway.ask(
-			new TaskMessages.StopTask(executionAttemptID),
-			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+        scala.concurrent.Future<Acknowledge> stopResult = actorGateway.ask(
+                new TaskMessages.StopTask(executionAttemptID),
+                new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+                .mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 
-		return FutureUtils.toJava(stopResult);
-	}
+        return FutureUtils.toJava(stopResult);
+    }
 
-	@Override
-	public CompletableFuture<Acknowledge> cancelTask(ExecutionAttemptID executionAttemptID, Time timeout) {
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkNotNull(timeout);
+    @Override
+    public CompletableFuture<Acknowledge> cancelTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+        Preconditions.checkNotNull(executionAttemptID);
+        Preconditions.checkNotNull(timeout);
 
-		scala.concurrent.Future<Acknowledge> cancelResult = actorGateway.ask(
-			new TaskMessages.CancelTask(executionAttemptID),
-			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+        scala.concurrent.Future<Acknowledge> cancelResult = actorGateway.ask(
+                new TaskMessages.CancelTask(executionAttemptID),
+                new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+                .mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 
-		return FutureUtils.toJava(cancelResult);
-	}
+        return FutureUtils.toJava(cancelResult);
+    }
 
-	@Override
-	public CompletableFuture<Acknowledge> updatePartitions(ExecutionAttemptID executionAttemptID, Iterable<PartitionInfo> partitionInfos, Time timeout) {
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkNotNull(partitionInfos);
+    @Override
+    public CompletableFuture<Acknowledge> updatePartitions(ExecutionAttemptID executionAttemptID, Iterable<PartitionInfo> partitionInfos, Time timeout) {
+        Preconditions.checkNotNull(executionAttemptID);
+        Preconditions.checkNotNull(partitionInfos);
 
-		TaskMessages.UpdatePartitionInfo updatePartitionInfoMessage = new TaskMessages.UpdateTaskMultiplePartitionInfos(
-			executionAttemptID,
-			partitionInfos);
+        TaskMessages.UpdatePartitionInfo updatePartitionInfoMessage = new TaskMessages.UpdateTaskMultiplePartitionInfos(
+                executionAttemptID,
+                partitionInfos);
 
-		scala.concurrent.Future<Acknowledge> updatePartitionsResult = actorGateway.ask(
-			updatePartitionInfoMessage,
-			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+        scala.concurrent.Future<Acknowledge> updatePartitionsResult = actorGateway.ask(
+                updatePartitionInfoMessage,
+                new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+                .mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 
-		return FutureUtils.toJava(updatePartitionsResult);
-	}
+        return FutureUtils.toJava(updatePartitionsResult);
+    }
 
-	@Override
-	public void failPartition(ExecutionAttemptID executionAttemptID) {
-		Preconditions.checkNotNull(executionAttemptID);
+    @Override
+    public void failPartition(ExecutionAttemptID executionAttemptID) {
+        Preconditions.checkNotNull(executionAttemptID);
 
-		actorGateway.tell(new TaskMessages.FailIntermediateResultPartitions(executionAttemptID));
-	}
+        actorGateway.tell(new TaskMessages.FailIntermediateResultPartitions(executionAttemptID));
+    }
 
-	@Override
-	public void notifyCheckpointComplete(
-			ExecutionAttemptID executionAttemptID,
-			JobID jobId,
-			long checkpointId,
-			long timestamp) {
+    @Override
+    public void notifyCheckpointComplete(
+            ExecutionAttemptID executionAttemptID,
+            JobID jobId,
+            long checkpointId,
+            long timestamp) {
 
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkNotNull(jobId);
+        Preconditions.checkNotNull(executionAttemptID);
+        Preconditions.checkNotNull(jobId);
 
-		actorGateway.tell(new NotifyCheckpointComplete(jobId, executionAttemptID, checkpointId, timestamp));
-	}
+        actorGateway.tell(new NotifyCheckpointComplete(jobId, executionAttemptID, checkpointId, timestamp));
+    }
 
-	@Override
-	public void triggerCheckpoint(
-			ExecutionAttemptID executionAttemptID,
-			JobID jobId,
-			long checkpointId,
-			long timestamp,
-			CheckpointOptions checkpointOptions) {
+    @Override
+    public void triggerCheckpoint(
+            ExecutionAttemptID executionAttemptID,
+            JobID jobId,
+            long checkpointId,
+            long timestamp,
+            CheckpointOptions checkpointOptions) {
 
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkNotNull(jobId);
+        Preconditions.checkNotNull(executionAttemptID);
+        Preconditions.checkNotNull(jobId);
+        //新建了一个TriggerCheckpoint消息，通过actorGateway的tell方法（异步发送，没有返回结果）发送这个消息
+        //ActorGateway是基于actor通信的接口
+		// AkkaActorGateway类是ActorGateway接口一种实现，它使用 Akka 与远程的actors进行通信
+        actorGateway.tell(new TriggerCheckpoint(jobId, executionAttemptID, checkpointId, timestamp, checkpointOptions));
+    }
 
-		actorGateway.tell(new TriggerCheckpoint(jobId, executionAttemptID, checkpointId, timestamp, checkpointOptions));
-	}
+    @Override
+    public CompletableFuture<Acknowledge> freeSlot(AllocationID allocationId, Throwable cause, Time timeout) {
+        throw new UnsupportedOperationException("The old TaskManager does not support freeing slots");
+    }
 
-	@Override
-	public CompletableFuture<Acknowledge> freeSlot(AllocationID allocationId, Throwable cause, Time timeout) {
-		throw new UnsupportedOperationException("The old TaskManager does not support freeing slots");
-	}
+    private CompletableFuture<TransientBlobKey> requestTaskManagerLog(TaskManagerMessages.RequestTaskManagerLog request, Time timeout) {
+        Preconditions.checkNotNull(request);
+        Preconditions.checkNotNull(timeout);
 
-	private CompletableFuture<TransientBlobKey> requestTaskManagerLog(TaskManagerMessages.RequestTaskManagerLog request, Time timeout) {
-		Preconditions.checkNotNull(request);
-		Preconditions.checkNotNull(timeout);
+        scala.concurrent.Future<TransientBlobKey> blobKeyFuture = actorGateway
+                .ask(
+                        request,
+                        new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+                .mapTo(ClassTag$.MODULE$.<TransientBlobKey>apply(TransientBlobKey.class));
 
-		scala.concurrent.Future<TransientBlobKey> blobKeyFuture = actorGateway
-			.ask(
-				request,
-				new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<TransientBlobKey>apply(TransientBlobKey.class));
-
-		return FutureUtils.toJava(blobKeyFuture);
-	}
+        return FutureUtils.toJava(blobKeyFuture);
+    }
 }

@@ -36,7 +36,7 @@ public abstract class DMetric {
 	 * since they are mapped to json objects in a Datadog-defined format.
 	 */
 	private final String metric; // Metric name
-	private final MetricType type;
+	private final MetricType type; // gauge counter
 	private final String host;
 	private final List<String> tags;
 

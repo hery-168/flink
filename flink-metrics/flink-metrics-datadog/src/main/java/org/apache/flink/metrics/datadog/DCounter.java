@@ -24,6 +24,7 @@ import java.util.List;
 
 /**
  * Mapping of counter between Flink and Datadog.
+ *  Datadog 之间 Counter 的映射
  */
 public class DCounter extends DMetric {
 	private final Counter counter;

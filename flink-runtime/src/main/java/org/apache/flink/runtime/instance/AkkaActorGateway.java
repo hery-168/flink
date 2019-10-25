@@ -77,6 +77,7 @@ public class AkkaActorGateway implements ActorGateway, Serializable {
 	@Override
 	public void tell(Object message) {
 		Object newMessage = decorator.decorate(message);
+		//通过ActorRef实例actor发送消息，ActorRef是akka中的类。以后需要研究Akka的实现机制。
 		actor.tell(newMessage, ActorRef.noSender());
 	}
 

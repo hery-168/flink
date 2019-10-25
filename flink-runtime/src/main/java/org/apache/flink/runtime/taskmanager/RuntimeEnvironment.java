@@ -274,7 +274,7 @@ public class RuntimeEnvironment implements Environment {
 			long checkpointId,
 			CheckpointMetrics checkpointMetrics,
 			TaskStateSnapshot checkpointStateHandles) {
-
+		//通过CheckpointResponder接口的实例checkpointResponder发送ack消息
 		checkpointResponder.acknowledgeCheckpoint(
 				jobId, executionId, checkpointId, checkpointMetrics,
 				checkpointStateHandles);

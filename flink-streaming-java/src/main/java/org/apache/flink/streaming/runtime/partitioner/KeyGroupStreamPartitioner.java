@@ -51,6 +51,7 @@ public class KeyGroupStreamPartitioner<T, K> extends StreamPartitioner<T> implem
 	public int selectChannel(SerializationDelegate<StreamRecord<T>> record) {
 		K key;
 		try {
+			// 根据keySelector 来进行选择
 			key = keySelector.getKey(record.getInstance().getValue());
 		} catch (Exception e) {
 			throw new RuntimeException("Could not extract key from " + record.getInstance().getValue(), e);
@@ -73,4 +74,4 @@ public class KeyGroupStreamPartitioner<T, K> extends StreamPartitioner<T> implem
 		KeyGroupRangeAssignment.checkParallelismPreconditions(maxParallelism);
 		this.maxParallelism = maxParallelism;
 	}
-}
+		}

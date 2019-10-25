@@ -83,13 +83,14 @@ public class CheckpointCoordinator {
 	// ------------------------------------------------------------------------
 
 	/** Coordinator-wide lock to safeguard the checkpoint updates */
-	private final Object lock = new Object();
+	private final Object lock = new Object();//Coordinator范围的锁
 
 	/** Lock specially to make sure that trigger requests do not overtake each other.
 	 * This is not done with the coordinator-wide lock, because as part of triggering,
 	 * blocking operations may happen (distributed atomic counters).
 	 * Using a dedicated lock, we avoid blocking the processing of 'acknowledge/decline'
 	 * messages during that phase. */
+	//trigger requests的专用锁，避免在获取checkpointID时阻塞对消息的处理
 	private final Object triggerLock = new Object();
 
 	/** The job whose checkpoint this coordinator coordinates */
@@ -111,6 +112,7 @@ public class CheckpointCoordinator {
 	private final ExecutionVertex[] tasksToCommitTo;
 
 	/** Map from checkpoint ID to the pending checkpoint */
+	//待处理的checkpoint
 	private final Map<Long, PendingCheckpoint> pendingCheckpoints;
 
 	/** Completed checkpoints. Implementations can be blocking. Make sure calls to methods
@@ -149,6 +151,7 @@ public class CheckpointCoordinator {
 	private final HashMap<String, MasterTriggerRestoreHook<?>> masterHooks;
 
 	/** Actor that receives status updates from the execution graph this coordinator works for */
+	//Actor实例，监听Job状态变化并根据变化启停定时任务
 	private JobStatusListener jobStatusListener;
 
 	/** The number of consecutive failed trigger attempts */
@@ -162,13 +165,15 @@ public class CheckpointCoordinator {
 
 	/** Flag whether a triggered checkpoint should immediately schedule the next checkpoint.
 	 * Non-volatile, because only accessed in synchronized scope */
+	// 标记一个已经触发的cp后是否立即调度下一个cp
 	private boolean periodicScheduling;
 
 	/** Flag whether a trigger request could not be handled immediately. Non-volatile, because only
 	 * accessed in synchronized scope */
-	private boolean triggerRequestQueued;
+	private boolean triggerRequestQueued;//标记一个触发请求是否不能被立即处理
 
 	/** Flag marking the coordinator as shut down (not accepting any messages any more) */
+	//coordinator的关闭标志
 	private volatile boolean shutdown;
 
 	/** Optional tracker for checkpoint statistics. */
@@ -384,11 +389,11 @@ public class CheckpointCoordinator {
 	/**
 	 * Triggers a new standard checkpoint and uses the given timestamp as the checkpoint
 	 * timestamp.
-	 *
+	 * 触发一个新的标准检查点。timestamp为触发检查点的时间戳，isPeriodic标志是否是周期性的触发
 	 * @param timestamp The timestamp for the checkpoint.
 	 * @param isPeriodic Flag indicating whether this triggered checkpoint is
 	 * periodic. If this flag is true, but the periodic scheduler is disabled,
-	 * the checkpoint will be declined.
+	 * the checkpoint will be declined（拒绝）.
 	 * @return <code>true</code> if triggering the checkpoint succeeded.
 	 */
 	public boolean triggerCheckpoint(long timestamp, boolean isPeriodic) {
@@ -401,10 +406,10 @@ public class CheckpointCoordinator {
 			CheckpointProperties props,
 			@Nullable String externalSavepointLocation,
 			boolean isPeriodic) {
-
+		//一些checkpoint之前的预检查
 		// make some eager pre-checks
 		synchronized (lock) {
-			// abort if the coordinator has been shutdown in the meantime
+			// abort if the coordinator has been shutdown in the meantime 如果协调器与此同时已经关闭，那么直接返回结果
 			if (shutdown) {
 				return new CheckpointTriggerResult(CheckpointDeclineReason.COORDINATOR_SHUTDOWN);
 			}
@@ -417,16 +422,22 @@ public class CheckpointCoordinator {
 			// validate whether the checkpoint can be triggered, with respect to the limit of
 			// concurrent checkpoints, and the minimum time between checkpoints.
 			// these checks are not relevant for savepoints
+			// 验证checkpoint是否能被触发，关于并发检查点的限制和检查点之间的最小时间
+			// 判断checkpoint是否被强制。强制checkpoint不受并发检查点最大数量和检查点之间最小时间的限制
 			if (!props.forceCheckpoint()) {
 				// sanity check: there should never be more than one trigger request queued
 				if (triggerRequestQueued) {
+					//如果不能被立即触发，直接返回异常
 					LOG.warn("Trying to trigger another checkpoint for job {} while one was queued already.", job);
 					return new CheckpointTriggerResult(CheckpointDeclineReason.ALREADY_QUEUED);
 				}
 
 				// if too many checkpoints are currently in progress, we need to mark that a request is queued
+				// 如果有太多的cp在当前的进程中，需要标记到一个请求队列中
+				//如果未完成的检查点太多，大于配置的并发检查点最大数量，则将当前检查点的触发请求设置为不能立即执行
 				if (pendingCheckpoints.size() >= maxConcurrentCheckpointAttempts) {
 					triggerRequestQueued = true;
+					//如果定时任务已经启动，则取消定时任务的执行。
 					if (currentPeriodicTrigger != null) {
 						currentPeriodicTrigger.cancel(false);
 						currentPeriodicTrigger = null;
@@ -435,15 +446,18 @@ public class CheckpointCoordinator {
 				}
 
 				// make sure the minimum interval between checkpoints has passed
+				//检查是否满足checkpoint之间的最小时间间隔的条件
 				final long earliestNext = lastCheckpointCompletionNanos + minPauseBetweenCheckpointsNanos;
 				final long durationTillNextMillis = (earliestNext - System.nanoTime()) / 1_000_000;
 
 				if (durationTillNextMillis > 0) {
+					// 如果任务已经启动，那么取消定时任务的执行
 					if (currentPeriodicTrigger != null) {
 						currentPeriodicTrigger.cancel(false);
 						currentPeriodicTrigger = null;
 					}
-					// Reassign the new trigger to the currentPeriodicTrigger
+					// Reassign the new trigger to the currentPeriodicTrigger 重新分配一个新的触发器给当前周期的触发器
+					//此时延迟时间设置为durationTillNextMillis
 					currentPeriodicTrigger = timer.scheduleAtFixedRate(
 							new ScheduledTrigger(),
 							durationTillNextMillis, baseInterval, TimeUnit.MILLISECONDS);
@@ -455,6 +469,7 @@ public class CheckpointCoordinator {
 
 		// check if all tasks that we need to trigger are running.
 		// if not, abort the checkpoint
+		// 检查需要触发checkpoint的所有Tasks是否处于运行状态，如果有一个不满足条件，则不触发检查点
 		Execution[] executions = new Execution[tasksToTrigger.length];
 		for (int i = 0; i < tasksToTrigger.length; i++) {
 			Execution ee = tasksToTrigger[i].getCurrentExecutionAttempt();
@@ -464,7 +479,7 @@ public class CheckpointCoordinator {
 						job);
 				return new CheckpointTriggerResult(CheckpointDeclineReason.NOT_ALL_REQUIRED_TASKS_RUNNING);
 			} else if (ee.getState() == ExecutionState.RUNNING) {
-				executions[i] = ee;
+				executions[i] = ee; // 将运行中的task放入到数组中
 			} else {
 				LOG.info("Checkpoint triggering task {} of job {} is not in state {} but {} instead. Aborting checkpoint.",
 						tasksToTrigger[i].getTaskNameWithSubtaskIndex(),
@@ -477,6 +492,7 @@ public class CheckpointCoordinator {
 
 		// next, check if all tasks that need to acknowledge the checkpoint are running.
 		// if not, abort the checkpoint
+		//检查所有需要ack的tasks是否都处于运行状态，如果有一个不满足条件，则不触发检查点。
 		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(tasksToWaitFor.length);
 
 		for (ExecutionVertex ev : tasksToWaitFor) {
@@ -497,16 +513,18 @@ public class CheckpointCoordinator {
 		// this is not done with the coordinator-wide lock, because the 'checkpointIdCounter'
 		// may issue blocking operations. Using a different lock than the coordinator-wide lock,
 		// we avoid blocking the processing of 'acknowledge/decline' messages during that time.
+		// 触发检查点，在triggerLock同步代码块中完成，而不是使用coordinator范围的锁。
 		synchronized (triggerLock) {
 
-			final CheckpointStorageLocation checkpointStorageLocation;
-			final long checkpointID;
+			final CheckpointStorageLocation checkpointStorageLocation;// 存储位置
+			final long checkpointID;// cp 的id
 
 			try {
 				// this must happen outside the coordinator-wide lock, because it communicates
 				// with external services (in HA mode) and may block for a while.
+				//从cp的累加器中获取一个id,付给即将进行的cp
 				checkpointID = checkpointIdCounter.getAndIncrement();
-
+				//从配置文件中获取cp的存储路径，根据配置获取cp的路径或者是savepoint的路径
 				checkpointStorageLocation = props.isSavepoint() ?
 						checkpointStorage.initializeLocationForSavepoint(checkpointID, externalSavepointLocation) :
 						checkpointStorage.initializeLocationForCheckpoint(checkpointID);
@@ -519,7 +537,7 @@ public class CheckpointCoordinator {
 						t);
 				return new CheckpointTriggerResult(CheckpointDeclineReason.EXCEPTION);
 			}
-
+			//创建PendingCheckpoint实例，表示待处理检查点
 			final PendingCheckpoint checkpoint = new PendingCheckpoint(
 				job,
 				checkpointID,
@@ -535,10 +553,11 @@ public class CheckpointCoordinator {
 					timestamp,
 					props);
 
-				checkpoint.setStatsCallback(callback);
+				checkpoint.setStatsCallback(callback);// 设置cp的状态回调函数
 			}
 
 			// schedule the timer that will clean up the expired checkpoints
+			// 针对当前checkpoints超时进行资源清理的canceller
 			final Runnable canceller = () -> {
 				synchronized (lock) {
 					// only do the work if the checkpoint is not discarded anyways
@@ -557,9 +576,11 @@ public class CheckpointCoordinator {
 
 			try {
 				// re-acquire the coordinator-wide lock
+				//重新请求coordinator-wide lock
 				synchronized (lock) {
 					// since we released the lock in the meantime, we need to re-check
 					// that the conditions still hold.
+					// 重新检查触发条件，防止产生竞态条件。这里做二次检查的原因是，中间有一段关于获得checkpointId的代码，不在同步块中。
 					if (shutdown) {
 						return new CheckpointTriggerResult(CheckpointDeclineReason.COORDINATOR_SHUTDOWN);
 					}
@@ -598,9 +619,9 @@ public class CheckpointCoordinator {
 					}
 
 					LOG.info("Triggering checkpoint {} @ {} for job {}.", checkpointID, timestamp, job);
-
+					//将checkpoint加入到pendingCheckpoints的队列中
 					pendingCheckpoints.put(checkpointID, checkpoint);
-
+					//启动超时canceller，延迟checkpointTimeout的执行
 					ScheduledFuture<?> cancellerHandle = timer.schedule(
 							canceller,
 							checkpointTimeout, TimeUnit.MILLISECONDS);
@@ -611,6 +632,7 @@ public class CheckpointCoordinator {
 					}
 
 					// trigger the master hooks for the checkpoint
+					// 触发master的构造函数对cp
 					final List<MasterState> masterStates = MasterHooks.triggerMasterHooks(masterHooks.values(),
 							checkpointID, timestamp, executor, Time.milliseconds(checkpointTimeout));
 					for (MasterState s : masterStates) {
@@ -618,13 +640,18 @@ public class CheckpointCoordinator {
 					}
 				}
 				// end of lock scope
-
+				// 封装cp的配置信息，包含cp的类型（cp/savepoint）和存储路径
 				final CheckpointOptions checkpointOptions = new CheckpointOptions(
 						props.getCheckpointType(),
 						checkpointStorageLocation.getLocationReference());
 
 				// send the messages to the tasks that trigger their checkpoint
-				for (Execution execution: executions) {
+				// 从JobManager发送到TaskManager，通知指定的task触发checkpoint
+				// 向tasks发送消息，触发它们的检查点
+				// executions是Execution[]数组，其中存储的元素是在检查点触发时需要被发送消息的Tasks的集合
+				// （即CheckpointCoordinator成员变量tasksToTrigger中的数据）。
+				// 对每一个要发送的Task执行triggerCheckpoint()方法
+				for (Execution execution: executions) {// executions 数组中是运行中的task节点
 					execution.triggerCheckpoint(checkpointID, timestamp, checkpointOptions);
 				}
 
@@ -724,11 +751,13 @@ public class CheckpointCoordinator {
 	 *
 	 * @throws CheckpointException If the checkpoint cannot be added to the completed checkpoint store.
 	 */
+	//发送NotifyCheckpointComplete消息
+	//该方法接收一个AcknowledgeCheckpoint消息，返回该Message是否与一个pending checkpoint相关联
 	public boolean receiveAcknowledgeMessage(AcknowledgeCheckpoint message) throws CheckpointException {
 		if (shutdown || message == null) {
 			return false;
 		}
-
+		// 验证job
 		if (!job.equals(message.getJob())) {
 			LOG.error("Received wrong AcknowledgeCheckpoint message for job {}: {}", job, message);
 			return false;
@@ -744,23 +773,24 @@ public class CheckpointCoordinator {
 			}
 
 			final PendingCheckpoint checkpoint = pendingCheckpoints.get(checkpointId);
-
+			//如果是待处理的检查点并且没有被Discarded
 			if (checkpoint != null && !checkpoint.isDiscarded()) {
-
+				//根据TaskExecutionId和SubtaskState，Acknowledges the task。确认该任务
 				switch (checkpoint.acknowledgeTask(message.getTaskExecutionId(), message.getSubtaskState(), message.getCheckpointMetrics())) {
-					case SUCCESS:
+					case SUCCESS:// 成功
 						LOG.debug("Received acknowledge message for checkpoint {} from task {} of job {}.",
 							checkpointId, message.getTaskExecutionId(), message.getJob());
-
+						//如果收到了全部task的确认消息（即notYetAcknowledgedTasks为空）
 						if (checkpoint.isFullyAcknowledged()) {
+							//将完成的checkpointId从checkpoint中删除和一下标志修改，最后，发送notify complete消息
 							completePendingCheckpoint(checkpoint);
 						}
 						break;
-					case DUPLICATE:
+					case DUPLICATE://重复消息
 						LOG.debug("Received a duplicate acknowledge message for checkpoint {}, task {}, job {}.",
 							message.getCheckpointId(), message.getTaskExecutionId(), message.getJob());
 						break;
-					case UNKNOWN:
+					case UNKNOWN://未知消息
 						LOG.warn("Could not acknowledge the checkpoint {} for task {} of job {}, " +
 								"because the task's execution attempt id was unknown. Discarding " +
 								"the state handle to avoid lingering state.", message.getCheckpointId(),
@@ -769,7 +799,7 @@ public class CheckpointCoordinator {
 						discardSubtaskState(message.getJob(), message.getTaskExecutionId(), message.getCheckpointId(), message.getSubtaskState());
 
 						break;
-					case DISCARDED:
+					case DISCARDED: //废弃消息
 						LOG.warn("Could not acknowledge the checkpoint {} for task {} of job {}, " +
 							"because the pending checkpoint had been discarded. Discarding the " +
 								"state handle tp avoid lingering state.",
@@ -894,6 +924,7 @@ public class CheckpointCoordinator {
 		for (ExecutionVertex ev : tasksToCommitTo) {
 			Execution ee = ev.getCurrentExecutionAttempt();
 			if (ee != null) {
+				// 发送NotifyCheckpointComplete消息
 				ee.notifyCheckpointComplete(checkpointId, timestamp);
 			}
 		}
@@ -1168,7 +1199,7 @@ public class CheckpointCoordinator {
 	// --------------------------------------------------------------------------------------------
 	//  Periodic scheduling of checkpoints
 	// --------------------------------------------------------------------------------------------
-
+	// 启动cp的调度任务
 	public void startCheckpointScheduler() {
 		synchronized (lock) {
 			if (shutdown) {
@@ -1176,31 +1207,33 @@ public class CheckpointCoordinator {
 			}
 
 			// make sure all prior timers are cancelled
+			//保证所有以前的timer被取消
 			stopCheckpointScheduler();
 
 			periodicScheduling = true;
 			long initialDelay = ThreadLocalRandom.current().nextLong(
 				minPauseBetweenCheckpointsNanos / 1_000_000L, baseInterval + 1L);
+			//scheduleAtFixedRate方法是以固定延迟和固定时间间隔周期性的执行任务
 			currentPeriodicTrigger = timer.scheduleAtFixedRate(
 					new ScheduledTrigger(), initialDelay, baseInterval, TimeUnit.MILLISECONDS);
 		}
 	}
-
+	// 停止定时任务
 	public void stopCheckpointScheduler() {
 		synchronized (lock) {
 			triggerRequestQueued = false;
 			periodicScheduling = false;
-
+			// 如果有运行中的定时任务，那么就取消
 			if (currentPeriodicTrigger != null) {
-				currentPeriodicTrigger.cancel(false);
+				currentPeriodicTrigger.cancel(false);// 取消当前周期的触发任务
 				currentPeriodicTrigger = null;
 			}
-
+			//pendingCheckpoints中存的是待执行的检查点
 			for (PendingCheckpoint p : pendingCheckpoints.values()) {
 				p.abortError(new Exception("Checkpoint Coordinator is suspending."));
 			}
 
-			pendingCheckpoints.clear();
+			pendingCheckpoints.clear();//清空pendingCheckpoints
 			numUnsuccessfulCheckpointsTriggers.set(0);
 		}
 	}
@@ -1216,6 +1249,7 @@ public class CheckpointCoordinator {
 			}
 
 			if (jobStatusListener == null) {
+				// 创建job状态变化的监听器，用于启动或者停止cp的定时任务
 				jobStatusListener = new CheckpointCoordinatorDeActivator(this);
 			}
 
@@ -1225,6 +1259,9 @@ public class CheckpointCoordinator {
 
 	// ------------------------------------------------------------------------
 
+	/**
+	 * 检查点定时任务类，主要是调用triggerCheckpoint 方法
+	 */
 	private final class ScheduledTrigger implements Runnable {
 
 		@Override
