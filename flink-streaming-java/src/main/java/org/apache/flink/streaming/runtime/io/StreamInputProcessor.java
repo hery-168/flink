@@ -198,7 +198,7 @@ public class StreamInputProcessor<IN> {
 						StreamRecord<IN> record = recordOrMark.asRecord();
 						synchronized (lock) {
 							numRecordsIn.inc();
-							streamOperator.setKeyContextElement1(record);
+							streamOperator.setKeyContextElement1(record);//这个方法的作用就是在处理Record之前将stateBackend切换到相应的Key的状态
 							// 执行相关的操作 然后执行相应的子类的方法，对于StreamFlatMap来说，进入processElement方法，处理用户所写的代码逻辑
 							streamOperator.processElement(record);
 						}

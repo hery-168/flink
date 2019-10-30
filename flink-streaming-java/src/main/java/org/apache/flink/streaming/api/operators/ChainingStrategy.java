@@ -34,18 +34,20 @@ public enum ChainingStrategy {
 
 	/**
 	 * Operators will be eagerly chained whenever possible.
-	 *
+	 * Operators 尽可能的chain在一起
 	 * <p>To optimize performance, it is generally a good practice to allow maximal
 	 * chaining and increase operator parallelism.
 	 */
 	ALWAYS,
 
 	/**
+	 * 该运算符将不会被链接到之前或之后的运算符
 	 * The operator will not be chained to the preceding or succeeding operators.
 	 */
 	NEVER,
 
 	/**
+	 * 默认值 当前运算符将不会链接到前面运算符，但是后面运算符可链接到该当前运算符
 	 * The operator will not be chained to the predecessor, but successors may chain to this
 	 * operator.
 	 */

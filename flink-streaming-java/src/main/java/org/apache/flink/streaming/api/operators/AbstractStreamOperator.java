@@ -100,18 +100,21 @@ public abstract class AbstractStreamOperator<OUT>
 	// ----------- configuration properties -------------
 
 	// A sane default for most operators
+	//定义能否在生成JobGraph时对算子进行Chaining优化。
 	protected ChainingStrategy chainingStrategy = ChainingStrategy.HEAD;
 
 	// ---------------- runtime fields ------------------
 
 	/** The task that contains this operator (and other operators in the same chain). */
+	//该算子在运行时所属的StreamTask
 	private transient StreamTask<?, ?> container;
-
+	// 任务配置信息
 	protected transient StreamConfig config;
-
+	// 算子输出句柄
 	protected transient Output<StreamRecord<OUT>> output;
 
 	/** The runtime context for UDFs. */
+	// 运行的上下文
 	private transient StreamingRuntimeContext runtimeContext;
 
 	// ---------------- key/value state ------------------
@@ -122,6 +125,7 @@ public abstract class AbstractStreamOperator<OUT>
 	 *
 	 * <p>This is for elements from the first input.
 	 */
+	//它们是用于将Key从StreamRecord中提取出来 如果操作不是一个keyed的操作，那么值为null
 	private transient KeySelector<?, ?> stateKeySelector1;
 
 	/**
@@ -133,14 +137,17 @@ public abstract class AbstractStreamOperator<OUT>
 	private transient KeySelector<?, ?> stateKeySelector2;
 
 	/** Backend for keyed state. This might be empty if we're not on a keyed stream. */
+	//用户指定的state backend,如果不是一个keyed的流，那么为空，常见的有heap,rocksDB
 	private transient AbstractKeyedStateBackend<?> keyedStateBackend;
 
 	/** Keyed state store view on the keyed backend. */
+	// keyedStateStore是在state backend上做一层抽象，使其能通过StateDescriptor直接获取State
 	private transient DefaultKeyedStateStore keyedStateStore;
 
 	// ---------------- operator state ------------------
 
 	/** Operator state backend / store. */
+	//算子相关的状态
 	private transient OperatorStateBackend operatorStateBackend;
 
 	// --------------- Metrics ---------------------------
@@ -151,7 +158,7 @@ public abstract class AbstractStreamOperator<OUT>
 	protected transient LatencyStats latencyStats;
 
 	// ---------------- time handler ------------------
-
+	//提供了定时触发的服务，在状态清理上有很重要的作用
 	protected transient InternalTimeServiceManager<?> timeServiceManager;
 
 	// ---------------- two-input operator watermarks ------------------
@@ -391,12 +398,12 @@ public abstract class AbstractStreamOperator<OUT>
 				factory,
 				keyGroupRange,
 				getContainingTask().getCancelables())) {
-
+			// snapshotState(snapshotContext)方法在不同的最终operator中有自己的具体实现
 			snapshotState(snapshotContext);
 
 			snapshotInProgress.setKeyedStateRawFuture(snapshotContext.getKeyedStateStreamFuture());
 			snapshotInProgress.setOperatorStateRawFuture(snapshotContext.getOperatorStateStreamFuture());
-
+			//调用operatorStateBackend和keyedStateBackend的snapshot方法将stateBackend的备份到用户指定的文件系统
 			if (null != operatorStateBackend) {
 				snapshotInProgress.setOperatorStateManagedFuture(
 					operatorStateBackend.snapshot(checkpointId, timestamp, factory, checkpointOptions));
@@ -476,6 +483,7 @@ public abstract class AbstractStreamOperator<OUT>
 
 	}
 
+	//调用keyStateBackend的同名方法，通知其执行checkpoint完成之后的逻辑
 	@Override
 	public void notifyCheckpointComplete(long checkpointId) throws Exception {
 		if (keyedStateBackend != null) {
@@ -552,7 +560,7 @@ public abstract class AbstractStreamOperator<OUT>
 
 	/**
 	 * Creates a partitioned state handle, using the state backend configured for this task.
-	 *
+	 *创建了一个partitioned state的句柄，使得聚合类的方法可以操作状态，并且这些状态会在snapshotState被调用的时候被checkpoint
 	 * @throws IllegalStateException Thrown, if the key/value state was already initialized.
 	 * @throws Exception Thrown, if the state backend cannot create the key/value state.
 	 */
@@ -560,6 +568,18 @@ public abstract class AbstractStreamOperator<OUT>
 		return getPartitionedState(VoidNamespace.INSTANCE, VoidNamespaceSerializer.INSTANCE, stateDescriptor);
 	}
 
+	/**
+	 * 该方法会被WindowOperator调用，由于同一个key不同的window会对应不同的值，
+	 * 所以每个Window就是一个namespace，在处理具体Element前不仅要切换Key，
+	 * 还要切换namespace。本质上与上一个方法的区别就在于取得的state是否有namespace
+	 * @param namespaceSerializer
+	 * @param stateDescriptor
+	 * @param <N>
+	 * @param <S>
+	 * @param <T>
+	 * @return
+	 * @throws Exception
+	 */
 	protected <N, S extends State, T> S getOrCreateKeyedState(
 			TypeSerializer<N> namespaceSerializer,
 			StateDescriptor<S, T> stateDescriptor) throws Exception {
@@ -576,7 +596,8 @@ public abstract class AbstractStreamOperator<OUT>
 
 	/**
 	 * Creates a partitioned state handle, using the state backend configured for this task.
-	 *
+	 *创建了一个partitioned state的句柄，使得聚合类的方法可以操作状态，并且这些状态会在snapshotState被调用的时候被
+	 * checkpoint
 	 * @throws IllegalStateException Thrown, if the key/value state was already initialized.
 	 * @throws Exception Thrown, if the state backend cannot create the key/value state.
 	 */

@@ -543,6 +543,7 @@ public class ExecutionGraph implements AccessExecutionGraph {
 		if (interval != Long.MAX_VALUE) {
 			// the periodic checkpoint scheduler is activated and deactivated as a result of
 			// job status changes (running -> on, all other states -> off)
+			//注册job状态变化的监听器
 			registerJobStatusListener(checkpointCoordinator.createActivatorDeactivator());
 		}
 	}

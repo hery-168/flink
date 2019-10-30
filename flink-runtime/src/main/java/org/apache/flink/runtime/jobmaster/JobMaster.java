@@ -450,7 +450,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 
 		// 3. disable checkpoint coordinator to suppress subsequent checkpoints
 		final CheckpointCoordinator checkpointCoordinator = currentExecutionGraph.getCheckpointCoordinator();
-		checkpointCoordinator.stopCheckpointScheduler();
+		checkpointCoordinator.stopCheckpointScheduler();// 停止checkpoint调度任务
 
 		// 4. take a savepoint
 		final CompletableFuture<String> savepointFuture = getJobModificationSavepoint(timeout);
@@ -464,7 +464,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 						// in case that we couldn't take a savepoint or restore from it, let's restart the checkpoint
 						// coordinator and abort the rescaling operation
 						if (checkpointCoordinator.isPeriodicCheckpointingConfigured()) {
-							checkpointCoordinator.startCheckpointScheduler();
+							checkpointCoordinator.startCheckpointScheduler();// 启动定时checkpoint调度任务
 						}
 
 						throw new CompletionException(ExceptionUtils.stripCompletionException(failure));

@@ -187,7 +187,7 @@ public class CheckpointCoordinator {
 	private SharedStateRegistry sharedStateRegistry;
 
 	// --------------------------------------------------------------------------------------------
-
+	// 构造函数
 	public CheckpointCoordinator(
 			JobID job,
 			long baseInterval,
@@ -400,6 +400,18 @@ public class CheckpointCoordinator {
 		return triggerCheckpoint(timestamp, checkpointProperties, null, isPeriodic).isSuccess();
 	}
 
+	/**
+	 * 核心逻辑：
+	 * 1、进程触发checkpoint之前的预检查，判断各种条件
+	 * 2、获取新的checkpointId，创建PendingCheckpoint
+	 * 3、再次判断触发条件是否满足，避免产生竞态条件
+	 * 4、将PendingCheckpoint实例的checkpoint加入到集合中，并向tasks发送消息，触发检查点操作。
+	 * @param timestamp
+	 * @param props
+	 * @param externalSavepointLocation
+	 * @param isPeriodic
+	 * @return
+	 */
 	@VisibleForTesting
 	public CheckpointTriggerResult triggerCheckpoint(
 			long timestamp,
@@ -646,7 +658,7 @@ public class CheckpointCoordinator {
 						checkpointStorageLocation.getLocationReference());
 
 				// send the messages to the tasks that trigger their checkpoint
-				// 从JobManager发送到TaskManager，通知指定的task触发checkpoint
+				// 从JobMaster发送到TaskManager，通知指定的task触发checkpoint
 				// 向tasks发送消息，触发它们的检查点
 				// executions是Execution[]数组，其中存储的元素是在检查点触发时需要被发送消息的Tasks的集合
 				// （即CheckpointCoordinator成员变量tasksToTrigger中的数据）。
@@ -691,7 +703,8 @@ public class CheckpointCoordinator {
 
 	/**
 	 * Receives a {@link DeclineCheckpoint} message for a pending checkpoint.
-	 *
+	 *TaskManager向JobMaster发送的检查点还没有被处理的消息
+	 * 用于告知CheckpointCoordinator：检查点的请求还没有能够被处理。这种情况通常发生于：某task已处于RUNNING状态，但在内部可能还没有准备好执行检查点。
 	 * @param message Checkpoint decline from the task manager
 	 */
 	public void receiveDeclineMessage(DeclineCheckpoint message) {
@@ -719,6 +732,7 @@ public class CheckpointCoordinator {
 
 			if (checkpoint != null && !checkpoint.isDiscarded()) {
 				LOG.info("Decline checkpoint {} by task {} of job {}.", checkpointId, message.getTaskExecutionId(), job);
+				//将checkpointId从pendingCheckpoints中删除
 				discardCheckpoint(checkpoint, message.getReason());
 			}
 			else if (checkpoint != null) {
@@ -1218,7 +1232,7 @@ public class CheckpointCoordinator {
 					new ScheduledTrigger(), initialDelay, baseInterval, TimeUnit.MILLISECONDS);
 		}
 	}
-	// 停止定时任务
+	// 停止定时任务，重置一下变量标记，释放资源
 	public void stopCheckpointScheduler() {
 		synchronized (lock) {
 			triggerRequestQueued = false;

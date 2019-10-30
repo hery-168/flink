@@ -1142,7 +1142,7 @@ public class Task implements Runnable, TaskActions, CheckpointListener {
 
 	/**
 	 * Calls the invokable to trigger a checkpoint.
-	 *
+	 * 调用invokable进行执行checkpoint
 	 * @param checkpointID The ID identifying the checkpoint.
 	 * @param checkpointTimestamp The timestamp associated with the checkpoint.
 	 * @param checkpointOptions Options for performing this checkpoint.
@@ -1170,8 +1170,12 @@ public class Task implements Runnable, TaskActions, CheckpointListener {
 					FileSystemSafetyNet.setSafetyNetCloseableRegistryForThread(safetyNetCloseableRegistry);
 
 					try {
+						// 会调用invokeable的实现类 如会调用StreamTask内部实现的triggerCheckpoint()方法，并根据调用链条
+						// triggerCheckpoint->performCheckpoint->checkpointState->CheckpointingOperation.executeCheckpointing
 						boolean success = invokable.triggerCheckpoint(checkpointMetaData, checkpointOptions);
 						if (!success) {
+							// 如果没有成功，那么会发送相关消息
+							//通过CheckpointResponder发送消息，类似发送AcknowledgeCheckpoint消息
 							checkpointResponder.declineCheckpoint(
 									getJobID(), getExecutionId(), checkpointID,
 									new CheckpointDeclineTaskNotReadyException(taskName));

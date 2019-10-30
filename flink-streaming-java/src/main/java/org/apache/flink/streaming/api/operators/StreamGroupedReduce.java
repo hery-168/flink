@@ -50,6 +50,7 @@ public class StreamGroupedReduce<IN> extends AbstractUdfStreamOperator<IN, Reduc
 	public void open() throws Exception {
 		super.open();
 		ValueStateDescriptor<IN> stateId = new ValueStateDescriptor<>(STATE_NAME, serializer);
+		// 获取stateBackend句柄
 		values = getPartitionedState(stateId);
 	}
 
@@ -59,7 +60,9 @@ public class StreamGroupedReduce<IN> extends AbstractUdfStreamOperator<IN, Reduc
 		IN currentValue = values.value();
 
 		if (currentValue != null) {
+			// 计算值
 			IN reduced = userFunction.reduce(currentValue, value);
+			// 更新到stateBackend
 			values.update(reduced);
 			output.collect(element.replace(reduced));
 		} else {

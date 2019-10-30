@@ -275,9 +275,10 @@ class TaskManager(
     // task messages are most common and critical, we handle them first
     case message: TaskMessage => handleTaskMessage(message)
 
-    // messages for coordinating checkpoints checkpoint相关的消息处理
+    // messages for coordinating checkpoints
+    // checkpoint相关的消息处理
     case message: AbstractCheckpointMessage => handleCheckpointingMessage(message)
-
+    // JobManagerLeader地址的消息
     case JobManagerLeaderAddress(address, newLeaderSessionID) =>
       handleJobManagerLeaderAddress(address, newLeaderSessionID)
 
@@ -513,6 +514,7 @@ class TaskManager(
         val task = runningTasks.get(taskExecutionId)
         if (task != null) {
           // 调用Task的triggerCheckpointBarrier 方法，来触发Checkpoint Barrier，
+          //在正常的情况下，triggerCheckpointBarrier方法中会调用StreamTask内部实现的triggerCheckpoint()方法，并根据调用链条
           task.triggerCheckpointBarrier(checkpointId, timestamp, checkpointOptions)
         } else {
           log.debug(s"TaskManager received a checkpoint request for unknown task $taskExecutionId.")

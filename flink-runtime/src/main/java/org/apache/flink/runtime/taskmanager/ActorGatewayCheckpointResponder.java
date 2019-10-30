@@ -45,11 +45,11 @@ public class ActorGatewayCheckpointResponder implements CheckpointResponder {
 			long checkpointId,
 			CheckpointMetrics checkpointMetrics,
 			TaskStateSnapshot checkpointStateHandles) {
-
+		//新建一个AcknowledgeCheckpoint消息
 		AcknowledgeCheckpoint message = new AcknowledgeCheckpoint(
 				jobID, executionAttemptID, checkpointId, checkpointMetrics,
 				checkpointStateHandles);
-
+		//通过actorGateway发送出去
 		actorGateway.tell(message);
 	}
 

@@ -96,7 +96,11 @@ public interface StreamOperator<OUT> extends CheckpointListener, KeyContext, Dis
 	/**
 	 * This method is called when the operator should do a snapshot, before it emits its
 	 * own checkpoint barrier.
-	 *
+	 * 当操作将要做一个快照时，在发送checkpoint barrier之前被调用
+	 * 这个方法不适应与任何实际状态的持久性，仅用于在发出检查点屏障之前发出一些数据
+	 * 在发出检查点屏障之前，维护一些小的瞬态数据的操作
+	 * 但可以简单地在检查点之前向下游发送
+	 * 一个例子是预聚合，它们的预聚合状态很小，经常被刷新到下游
 	 * <p>This method is intended not for any actual state persistence, but only for emitting some
 	 * data before emitting the checkpoint barrier. Operators that maintain some small transient state
 	 * that is inefficient to checkpoint (especially when it would need to be checkpointed in a

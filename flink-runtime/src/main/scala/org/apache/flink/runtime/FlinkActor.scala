@@ -29,8 +29,8 @@ import grizzled.slf4j.Logger
 trait FlinkActor extends Actor {
   val log: Logger
 
-  override def receive: Receive = handleMessage
-
+  override def receive: Receive =
+  handleMessage
   /** Handle incoming messages
     *
     * @return

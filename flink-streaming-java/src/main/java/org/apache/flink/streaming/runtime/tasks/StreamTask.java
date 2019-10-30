@@ -554,10 +554,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	//  Checkpoint and Restore
 	// ------------------------------------------------------------------------
 
+	/**
+	 * 进行checkpoint操作
+	 * @param checkpointMetaData Meta data for about this checkpoint
+	 * @param checkpointOptions Options for performing this checkpoint
+	 *
+	 * @return
+	 * @throws Exception
+	 */
 	@Override
 	public boolean triggerCheckpoint(CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) throws Exception {
 		try {
 			// No alignment if we inject a checkpoint
+			// 封装checkpoint的度量信息
 			CheckpointMetrics checkpointMetrics = new CheckpointMetrics()
 					.setBytesBufferedInAlignment(0L)
 					.setAlignmentDurationNanos(0L);
@@ -619,29 +628,32 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			checkpointMetaData.getCheckpointId(), checkpointOptions.getCheckpointType(), getName());
 
 		synchronized (lock) {
-			if (isRunning) {
-				// we can do a checkpoint
+				if (isRunning) {
+					// we can do a checkpoint
 
-				// All of the following steps happen as an atomic step from the perspective of barriers and
-				// records/watermarks/timers/callbacks.
-				// We generally try to emit the checkpoint barrier as soon as possible to not affect downstream
-				// checkpoint alignments
+					// All of the following steps happen as an atomic step from the perspective of barriers and
+					// records/watermarks/timers/callbacks.
+					// We generally try to emit the checkpoint barrier as soon as possible to not affect downstream
+					// checkpoint alignments
 
-				// Step (1): Prepare the checkpoint, allow operators to do some pre-barrier work.
-				//           The pre-barrier work should be nothing or minimal in the common case.
-				operatorChain.prepareSnapshotPreBarrier(checkpointMetaData.getCheckpointId());
+					// Step (1): Prepare the checkpoint, allow operators to do some pre-barrier work.
+					//           The pre-barrier work should be nothing or minimal in the common case.
+					// 第一步，准备checkpoint 允许所有的操作做一些barrier前的工作
+					operatorChain.prepareSnapshotPreBarrier(checkpointMetaData.getCheckpointId());
 
-				// Step (2): Send the checkpoint barrier downstream
-				operatorChain.broadcastCheckpointBarrier(
-						checkpointMetaData.getCheckpointId(),
-						checkpointMetaData.getTimestamp(),
-						checkpointOptions);
+					// Step (2): Send the checkpoint barrier downstream
+					// 第二步，发送checkpoint barrier 到下游 以便下游operator尽快开始他们的checkpoint进程
+					operatorChain.broadcastCheckpointBarrier(
+							checkpointMetaData.getCheckpointId(),
+							checkpointMetaData.getTimestamp(),
+							checkpointOptions);
 
-				// Step (3): Take the state snapshot. This should be largely asynchronous, to not
-				//           impact progress of the streaming topology
-				checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
-				return true;
-			}
+					// Step (3): Take the state snapshot. This should be largely asynchronous, to not
+					//           impact progress of the streaming topology
+					// 进行checkpoint state操作 获取Stete的快照，这在很大程度上应该是异步的，不影响流拓扑的进度
+					checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
+					return true;
+				}
 			else {
 				// we cannot perform our checkpoint - let the downstream operators know that they
 				// should not wait for any input from this operator
@@ -726,7 +738,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			checkpointOptions,
 			storage,
 			checkpointMetrics);
-
+		// 进行执行checkpoint
 		checkpointingOperation.executeCheckpointing();
 	}
 
@@ -1052,6 +1064,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			startSyncPartNano = System.nanoTime();
 
 			try {
+				//  对该task对应的所有StreamOperator对象调用checkpointStreamOperator 方法
 				for (StreamOperator<?> op : allOperators) {
 					checkpointStreamOperator(op);
 				}
@@ -1066,6 +1079,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				checkpointMetrics.setSyncDurationMillis((startAsyncPartNano - startSyncPartNano) / 1_000_000);
 
 				// we are transferring ownership over snapshotInProgressList for cleanup to the thread, active on submit
+				// 在提交时激活清除转化关系的清理线程
 				AsyncCheckpointRunnable asyncCheckpointRunnable = new AsyncCheckpointRunnable(
 					owner,
 					operatorSnapshotsInProgress,
@@ -1110,7 +1124,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		@SuppressWarnings("deprecation")
 		private void checkpointStreamOperator(StreamOperator<?> op) throws Exception {
 			if (null != op) {
-
+				// snapshotState 方法最终由它的子类AbstractStreamOperator给出了一个final实现
 				OperatorSnapshotFutures snapshotInProgress = op.snapshotState(
 						checkpointMetaData.getCheckpointId(),
 						checkpointMetaData.getTimestamp(),
