@@ -59,7 +59,7 @@ public interface JobMasterGateway extends
 
 	/**
 	 * Cancels the currently executed job.
-	 *
+	 *取消正在执行的任务(与TaskExecutorGateway交互)
 	 * @param timeout of this operation
 	 * @return Future acknowledge of the operation
 	 */
@@ -67,7 +67,7 @@ public interface JobMasterGateway extends
 
 	/**
 	 * Cancel the currently executed job.
-	 *
+	 *取消正在执行的任务(与TaskExecutorGateway交互)
 	 * @param timeout of this operation
 	 * @return Future acknowledge if the cancellation was successful
 	 */
@@ -75,7 +75,7 @@ public interface JobMasterGateway extends
 
 	/**
 	 * Triggers rescaling of the executed job.
-	 *
+	 *修改正在运行的任务的并行度(与TaskExecutorGateway交互)
 	 * @param newParallelism new parallelism of the job
 	 * @param rescalingBehaviour defining how strict the rescaling has to be executed
 	 * @param timeout of this operation
@@ -88,7 +88,7 @@ public interface JobMasterGateway extends
 
 	/**
 	 * Triggers rescaling of the given set of operators.
-	 *
+	 *修改指定算子的并行度(与TaskExecutorGateway交互)
 	 * @param operators set of operators which shall be rescaled
 	 * @param newParallelism new parallelism of the given set of operators
 	 * @param rescalingBehaviour defining how strict the rescaling has to be executed
@@ -164,7 +164,7 @@ public interface JobMasterGateway extends
 
 	/**
 	 * Disconnects the resource manager from the job manager because of the given cause.
-	 *
+	 *和ResourceManager断开连接
 	 * @param resourceManagerId identifying the resource manager leader id
 	 * @param cause of the disconnect
 	 */
