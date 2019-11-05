@@ -52,9 +52,11 @@ public class StateTtlConfig implements Serializable {
 	 * This option value configures when to update last access timestamp which prolongs state TTL.
 	 */
 	public enum UpdateType {
-		/** TTL is disabled. State does not expire. */
+		/** TTL is disabled. State does not expire.
+		 *  禁用过期，状态不过期*/
 		Disabled,
-		/** Last access timestamp is initialised when state is created and updated on every write operation. */
+		/** Last access timestamp is initialised when state is created and updated on every write operation.
+		 * 在每次写操作创建状态并更新状态时，将初始化上次访问时间戳*/
 		OnCreateAndWrite,
 		/** The same as <code>OnCreateAndWrite</code> but also updated on read. */
 		OnReadAndWrite
@@ -319,7 +321,7 @@ public class StateTtlConfig implements Serializable {
 	}
 
 	/**
-	 * TTL cleanup strategies.
+	 * TTL cleanup strategies. TTL 清除策略配置
 	 *
 	 * <p>This class configures when to cleanup expired state with TTL.
 	 * By default, state is always cleaned up on explicit read access if found expired.
@@ -332,9 +334,9 @@ public class StateTtlConfig implements Serializable {
 
 		/** Fixed strategies ordinals in {@code strategies} config field. */
 		enum Strategies {
-			FULL_STATE_SCAN_SNAPSHOT,
-			INCREMENTAL_CLEANUP,
-			ROCKSDB_COMPACTION_FILTER
+			FULL_STATE_SCAN_SNAPSHOT,// 快照扫描时候
+			INCREMENTAL_CLEANUP,//增量清理
+			ROCKSDB_COMPACTION_FILTER// rocksdb 压缩过滤
 		}
 
 		/** Base interface for cleanup strategies configurations. */
@@ -383,6 +385,7 @@ public class StateTtlConfig implements Serializable {
 		private final int cleanupSize;
 
 		/** Whether to run incremental cleanup per each processed record. */
+		//是否对每个处理的记录运行增量清理
 		private final boolean runCleanupForEveryRecord;
 
 		private IncrementalCleanupStrategy(
@@ -408,6 +411,7 @@ public class StateTtlConfig implements Serializable {
 		private static final long serialVersionUID = 3109278796506988980L;
 
 		/** Number of state entries to process by compaction filter before updating current timestamp. */
+		//更新当前时间戳之前，压缩过滤器要处理的状态条目数
 		private final long queryTimeAfterNumEntries;
 
 		private RocksdbCompactFilterCleanupStrategy(long queryTimeAfterNumEntries) {
