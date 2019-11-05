@@ -148,6 +148,7 @@ public class AkkaRpcService implements RpcService {
 	}
 
 	// this method does not mutate state and is thus thread-safe
+	//connect方法会创建一个AkkaInvocationHandler或者FencedAkkaInvocationHandler，然后调用connectInternal方法使用akka进行连接
 	@Override
 	public <C extends RpcGateway> CompletableFuture<C> connect(
 			final String address,
@@ -189,6 +190,7 @@ public class AkkaRpcService implements RpcService {
 			});
 	}
 
+	// 创建一个 Akka actor （AkkaRpcActor 或 FencedAkkaRpcActor） - 通过动态代理创建代理对象
 	@Override
 	public <C extends RpcEndpoint & RpcGateway> RpcServer startServer(C rpcEndpoint) {
 		checkNotNull(rpcEndpoint, "rpc endpoint");
@@ -213,9 +215,10 @@ public class AkkaRpcService implements RpcService {
 		}
 
 		ActorRef actorRef;
-
+		// 创建 Akka actor
 		synchronized (lock) {
 			checkState(!stopped, "RpcService is stopped");
+			//利用actorSystem创建ActorRef
 			actorRef = actorSystem.actorOf(akkaRpcActorProps, rpcEndpoint.getEndpointId());
 			actors.put(actorRef, rpcEndpoint);
 		}
@@ -230,14 +233,14 @@ public class AkkaRpcService implements RpcService {
 		} else {
 			hostname = host.get();
 		}
-
+		// 代理的接口
 		Set<Class<?>> implementedRpcGateways = new HashSet<>(RpcUtils.extractImplementedRpcGateways(rpcEndpoint.getClass()));
 
 		implementedRpcGateways.add(RpcServer.class);
 		implementedRpcGateways.add(AkkaBasedEndpoint.class);
 
 		final InvocationHandler akkaInvocationHandler;
-
+		//然后创建AkkaInvocationHandler或者FencedAkkaInvocationHandler
 		if (rpcEndpoint instanceof FencedRpcEndpoint) {
 			// a FencedRpcEndpoint needs a FencedAkkaInvocationHandler
 			akkaInvocationHandler = new FencedAkkaInvocationHandler<>(
@@ -264,8 +267,9 @@ public class AkkaRpcService implements RpcService {
 		// from this class . That works better in cases where Flink runs embedded and all Flink
 		// code is loaded dynamically (for example from an OSGI bundle) through a custom ClassLoader
 		ClassLoader classLoader = getClass().getClassLoader();
-
+		//Proxy.newProxyInstance创建RpcServer
 		@SuppressWarnings("unchecked")
+		//通过动态代理创建代理对象
 		RpcServer server = (RpcServer) Proxy.newProxyInstance(
 			classLoader,
 			implementedRpcGateways.toArray(new Class<?>[implementedRpcGateways.size()]),
@@ -316,13 +320,14 @@ public class AkkaRpcService implements RpcService {
 			}
 
 			if (rpcEndpoint != null) {
+				// 停止actor
 				terminateAkkaRpcActor(akkaClient.getActorRef(), rpcEndpoint);
 			} else {
 				LOG.debug("RPC endpoint {} already stopped or from different RPC service", selfGateway.getAddress());
 			}
 		}
 	}
-
+	//用于终止当前的RpcService
 	@Override
 	public CompletableFuture<Void> stopService() {
 		final CompletableFuture<Void> akkaRpcActorsTerminationFuture;
@@ -338,7 +343,7 @@ public class AkkaRpcService implements RpcService {
 
 			akkaRpcActorsTerminationFuture = terminateAkkaRpcActors();
 		}
-
+		//actorSystem.terminate() 停止actorSystem
 		final CompletableFuture<Void> actorSystemTerminationFuture = FutureUtils.composeAfterwards(
 			akkaRpcActorsTerminationFuture,
 			() -> FutureUtils.toJava(actorSystem.terminate()));
@@ -445,7 +450,7 @@ public class AkkaRpcService implements RpcService {
 			.<ActorIdentity>mapTo(ClassTag$.MODULE$.<ActorIdentity>apply(ActorIdentity.class));
 
 		final CompletableFuture<ActorIdentity> identifyFuture = FutureUtils.toJava(identify);
-
+		//获取 actor 的引用 ActorRef
 		final CompletableFuture<ActorRef> actorRefFuture = identifyFuture.thenApply(
 			(ActorIdentity actorIdentity) -> {
 				if (actorIdentity.getRef() == null) {
@@ -454,13 +459,13 @@ public class AkkaRpcService implements RpcService {
 					return actorIdentity.getRef();
 				}
 			});
-
+		//发送握手消息
 		final CompletableFuture<HandshakeSuccessMessage> handshakeFuture = actorRefFuture.thenCompose(
 			(ActorRef actorRef) -> FutureUtils.toJava(
 				Patterns
 					.ask(actorRef, new RemoteHandshakeMessage(clazz, getVersion()), configuration.getTimeout().toMilliseconds())
 					.<HandshakeSuccessMessage>mapTo(ClassTag$.MODULE$.<HandshakeSuccessMessage>apply(HandshakeSuccessMessage.class))));
-
+		// 创建 InvocationHandler，并通过动态代理生成代理对象
 		return actorRefFuture.thenCombineAsync(
 			handshakeFuture,
 			(ActorRef actorRef, HandshakeSuccessMessage ignored) -> {

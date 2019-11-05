@@ -24,6 +24,7 @@ import akka.actor.ActorRef;
 
 /**
  * Interface for Akka based rpc gateways.
+ * akka的基础网关接口
  */
 interface AkkaBasedEndpoint extends RpcGateway {
 

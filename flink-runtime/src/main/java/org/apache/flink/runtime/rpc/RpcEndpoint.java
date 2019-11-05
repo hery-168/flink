@@ -57,6 +57,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * <p>The RPC endpoint provides {@link #runAsync(Runnable)}, {@link #callAsync(Callable, Time)}
  * and the {@link #getMainThreadExecutor()} to execute code in the RPC endpoint's main thread.
  */
+//RPC端点的基类。 提供远程过程调用的分布式组件必须继承RpcEndpoint。 RPC端点由RpcServicet提供支持
 public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
@@ -64,12 +65,15 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 	// ------------------------------------------------------------------------
 
 	/** RPC service to be used to start the RPC server and to obtain rpc gateways. */
+	//用于启动RPC服务器和获取rpc网关
 	private final RpcService rpcService;
 
 	/** Unique identifier for this rpc endpoint. */
+	// 定义这个rpc endpoint的唯一标示
 	private final String endpointId;
 
 	/** Interface to access the underlying rpc server. */
+	// 用于访问RpcServer
 	protected final RpcServer rpcServer;
 
 	/** A reference to the endpoint's main thread, if the current method is called by the main thread. */
@@ -77,18 +81,19 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 
 	/** The main thread executor to be used to execute future callbacks in the main thread
 	 * of the executing rpc server. */
+	//主线程执行程序，用于在正在执行的rpc服务器的主线程中执行将来的回调
 	private final MainThreadExecutor mainThreadExecutor;
 
 	/**
 	 * Initializes the RPC endpoint.
-	 *
+	 * 初始化RPC endpoint
 	 * @param rpcService The RPC server that dispatches calls to this RPC endpoint.
 	 * @param endpointId Unique identifier for this endpoint
 	 */
 	protected RpcEndpoint(final RpcService rpcService, final String endpointId) {
 		this.rpcService = checkNotNull(rpcService, "rpcService");
 		this.endpointId = checkNotNull(endpointId, "endpointId");
-
+		//初始化服务
 		this.rpcServer = rpcService.startServer(this);
 
 		this.mainThreadExecutor = new MainThreadExecutor(rpcServer, this::validateRunsInMainThread);
@@ -123,6 +128,8 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 	 * @throws Exception indicating that something went wrong while starting the RPC endpoint
 	 */
 	public final void start() {
+		// 启动 rpc endpoint
+		//RpcServer 是通过 AkkaInvocationHandler 创建的动态代理对象
 		rpcServer.start();
 	}
 
@@ -189,7 +196,9 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 	 * @param <C> type of the self gateway to create
 	 * @return Self gateway of the specified type which can be used to issue asynchronous rpcs
 	 */
+	//获取 RpcEndpoint 的代理对象
 	public <C extends RpcGateway> C getSelfGateway(Class<C> selfGatewayType) {
+		//	//rpcServer 是通过动态代理创建的
 		if (selfGatewayType.isInstance(rpcServer)) {
 			@SuppressWarnings("unchecked")
 			C selfGateway = ((C) rpcServer);

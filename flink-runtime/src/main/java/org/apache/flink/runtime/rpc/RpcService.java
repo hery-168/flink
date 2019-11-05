@@ -32,13 +32,14 @@ import java.util.concurrent.TimeUnit;
  * Interface for rpc services. An rpc service is used to start and connect to a {@link RpcEndpoint}.
  * Connecting to a rpc server will return a {@link RpcGateway} which can be used to call remote
  * procedures.
+ *  RpcService 用于连接到一个远程的RPC server，或者启动一个rpc server来转发远程调用到rpcEndpoint
  */
 public interface RpcService {
 
 	/**
 	 * Return the hostname or host address under which the rpc service can be reached.
 	 * If the rpc service cannot be contacted remotely, then it will return an empty string.
-	 *
+	 * 获取rpc service的地址，如果rpc service不能远程连接，返回空串
 	 * @return Address of the rpc service or empty string if local rpc service
 	 */
 	String getAddress();
@@ -62,6 +63,7 @@ public interface RpcService {
 	 * @return Future containing the rpc gateway or an {@link RpcConnectionException} if the
 	 * connection attempt failed
 	 */
+	// 通过地址去连接一个远端的rpc server
 	<C extends RpcGateway> CompletableFuture<C> connect(
 		String address,
 		Class<C> clazz);
@@ -86,7 +88,7 @@ public interface RpcService {
 
 	/**
 	 * Start a rpc server which forwards the remote procedure calls to the provided rpc endpoint.
-	 *
+	 * 启动一个rpc服务器，该服务器将远程过程调用转发到提供的rpc端点
 	 * @param rpcEndpoint Rpc protocol to dispatch the rpcs to
 	 * @param <C> Type of the rpc endpoint
 	 * @return Self gateway to dispatch remote procedure calls to oneself
@@ -147,7 +149,7 @@ public interface RpcService {
 	/**
 	 * Gets a scheduled executor from the RPC service. This executor can be used to schedule
 	 * tasks to be executed in the future.
-	 *
+	 *从RPC服务获取调度的执行器。 该执行器可用于安排将来要执行的任务
 	 * <p><b>IMPORTANT:</b> This executor does not isolate the method invocations against
 	 * any concurrent invocations and is therefore not suitable to run completion methods of futures
 	 * that modify state of an {@link RpcEndpoint}. For such operations, one needs to use the
@@ -170,7 +172,7 @@ public interface RpcService {
 	/**
 	 * Execute the given runnable in the executor of the RPC service. This method can be used to run
 	 * code outside of the main thread of a {@link RpcEndpoint}.
-	 *
+	 *在rpc server上的executor上执行给定的程序
 	 * <p><b>IMPORTANT:</b> This executor does not isolate the method invocations against
 	 * any concurrent invocations and is therefore not suitable to run completion methods of futures
 	 * that modify state of an {@link RpcEndpoint}. For such operations, one needs to use the

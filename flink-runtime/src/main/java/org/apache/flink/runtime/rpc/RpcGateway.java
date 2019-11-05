@@ -25,14 +25,14 @@ public interface RpcGateway {
 
 	/**
 	 * Returns the fully qualified address under which the associated rpc endpoint is reachable.
-	 *
+	 * 获取rpc地址
 	 * @return Fully qualified (RPC) address under which the associated rpc endpoint is reachable
 	 */
 	String getAddress();
 
 	/**
 	 * Returns the fully qualified hostname under which the associated rpc endpoint is reachable.
-	 *
+	 * 获取端口
 	 * @return Fully qualified hostname under which the associated rpc endpoint is reachable
 	 */
 	String getHostname();

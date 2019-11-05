@@ -79,6 +79,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * @param <T> Type of the {@link RpcEndpoint}
  */
+//AkkaRpcActor 负责接受 RPC 调用的请求，并通过反射调用 RpcEndpoint 的对应方法来完成 RPC 调用
 class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends UntypedActor {
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
@@ -179,7 +180,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends UntypedActor {
 		log.warn(message);
 		sendErrorIfSender(new AkkaUnknownMessageException(message));
 	}
-
+	//处理 RPC 调用
 	protected void handleRpcMessage(Object message) {
 		if (message instanceof RunAsync) {
 			handleRunAsync((RunAsync) message);
@@ -240,7 +241,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends UntypedActor {
 		try {
 			String methodName = rpcInvocation.getMethodName();
 			Class<?>[] parameterTypes = rpcInvocation.getParameterTypes();
-
+			//获去需要调用的方法
 			rpcMethod = lookupRpcMethod(methodName, parameterTypes);
 		} catch (ClassNotFoundException e) {
 			log.error("Could not load method arguments.", e);
@@ -258,7 +259,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends UntypedActor {
 			RpcConnectionException rpcException = new RpcConnectionException("Could not find rpc method for rpc invocation.", e);
 			getSender().tell(new Status.Failure(rpcException), getSelf());
 		}
-
+		//通过反射执行
 		if (rpcMethod != null) {
 			try {
 				// this supports declaration of anonymous classes
@@ -282,7 +283,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends UntypedActor {
 					}
 
 					final String methodName = rpcMethod.getName();
-
+					//向调用方发送执行结果
 					if (result instanceof CompletableFuture) {
 						final CompletableFuture<?> responseFuture = (CompletableFuture<?>) result;
 						sendAsyncResponse(responseFuture, methodName);

@@ -171,11 +171,14 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 
 	@Override
 	public void start() {
+		//向 Akka actor 发送 START 消息
+		//所以启动 RpcEndpoint 实际上就是向当前 endpoint 绑定的 Actor 发送一条 START 消息，通知服务启动
 		rpcEndpoint.tell(ControlMessages.START, ActorRef.noSender());
 	}
 
 	@Override
 	public void stop() {
+		// 发送 STOP 消息
 		rpcEndpoint.tell(ControlMessages.STOP, ActorRef.noSender());
 	}
 
@@ -196,19 +199,23 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 		Class<?>[] parameterTypes = method.getParameterTypes();
 		Annotation[][] parameterAnnotations = method.getParameterAnnotations();
 		Time futureTimeout = extractRpcTimeout(parameterAnnotations, args, timeout);
-
+		//将 RPC 调用封装为 RpcInvocation（会根据RpcEndpoint是本地还是远程的）
+		//将 RPC 调用的方法名、参数类型和参数值封装为一个 RpcInvocation 对像
+		//根据 RpcEndpoint 是本地的还是远端，具体的 有 LocalRpcInvocation 和 RemoteRpcInvocation 两类，它们的区别在于是否需要序列化
 		final RpcInvocation rpcInvocation = createRpcInvocationMessage(methodName, parameterTypes, args);
 
 		Class<?> returnType = method.getReturnType();
 
 		final Object result;
-
+		//根据RPC方法是否有返回值决定调用 tell 还是 ask
 		if (Objects.equals(returnType, Void.TYPE)) {
+			//akka actor tell
 			tell(rpcInvocation);
 
 			result = null;
 		} else {
 			// execute an asynchronous call
+			//akka actor ask
 			CompletableFuture<?> resultFuture = ask(rpcInvocation, futureTimeout);
 
 			CompletableFuture<?> completableFuture = resultFuture.thenApply((Object o) -> {

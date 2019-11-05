@@ -22,12 +22,13 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Interface for self gateways.
+ * 自我网关接口
  */
 public interface RpcServer extends StartStoppable, MainThreadExecutable, RpcGateway {
 
 	/**
 	 * Return a future which is completed when the rpc endpoint has been terminated.
-	 *
+	 * 当rpc endpoint 终止的时候，返回一个future
 	 * @return Future indicating when the rpc endpoint has been terminated
 	 */
 	CompletableFuture<Void> getTerminationFuture();
