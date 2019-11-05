@@ -268,7 +268,7 @@ public abstract class AbstractStreamOperator<OUT>
 		if (keyedStateBackend != null) {
 			this.keyedStateStore = new DefaultKeyedStateStore(keyedStateBackend, getExecutionConfig());
 		}
-
+		// 初始化internalTimerServiceManager
 		timeServiceManager = context.internalTimerServiceManager();
 
 		CloseableIterable<KeyGroupStatePartitionStreamProvider> keyedStateInputs = context.rawKeyedStateInputs();

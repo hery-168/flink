@@ -46,10 +46,13 @@ import java.util.Map;
 @Internal
 public class InternalTimeServiceManager<K> {
 
+	// 时间状态前缀
 	@VisibleForTesting
 	static final String TIMER_STATE_PREFIX = "_timer_state";
+	//processing时间前缀
 	@VisibleForTesting
 	static final String PROCESSING_TIMER_PREFIX = TIMER_STATE_PREFIX + "/processing_";
+	// event 时间状态前缀
 	@VisibleForTesting
 	static final String EVENT_TIMER_PREFIX = TIMER_STATE_PREFIX + "/event_";
 
@@ -57,6 +60,7 @@ public class InternalTimeServiceManager<K> {
 	private final KeyContext keyContext;
 
 	private final PriorityQueueSetFactory priorityQueueSetFactory;
+	//
 	private final ProcessingTimeService processingTimeService;
 
 	private final Map<String, InternalTimerServiceImpl<K, ?>> timerServices;
@@ -78,6 +82,7 @@ public class InternalTimeServiceManager<K> {
 		this.timerServices = new HashMap<>();
 	}
 
+	//注册一个时间服务类型InternalTimeService
 	@SuppressWarnings("unchecked")
 	public <N> InternalTimerService<N> getInternalTimerService(
 		String name,
@@ -123,6 +128,7 @@ public class InternalTimeServiceManager<K> {
 			timerSerializer);
 	}
 
+	// 在event time 中使用
 	public void advanceWatermark(Watermark watermark) throws Exception {
 		for (InternalTimerServiceImpl<?, ?> service : timerServices.values()) {
 			service.advanceWatermark(watermark.getTimestamp());
@@ -131,6 +137,17 @@ public class InternalTimeServiceManager<K> {
 
 	//////////////////				Fault Tolerance Methods				///////////////////
 
+	/**
+	 * 对InternalTimeService进行checkpoint
+	 * 注册的定时数据都存储在KeyGroupedInternalPriorityQueue这个优先级队列中，也就是内存中，如果任务出现问题挂掉了，
+	 * 那么内存数据就会丢失，所以需要对其进行备份,备份入口是InternalTimeServiceManager.snapshotStateForKeyGroup
+	 * 将其Map<String, InternalTimerServiceImpl<K, ?>> 做checkpoint
+	 * 从而对InternalTimerServiceImpl<K, ?>中具体的队列做checkpoint
+	 * 相反数据恢复调用InternalTimeServiceManager.restoreStateForKeyGroup 方法恢复InternalTimerServiceImpl
+	 * @param stream
+	 * @param keyGroupIdx
+	 * @throws IOException
+	 */
 	public void snapshotStateForKeyGroup(DataOutputView stream, int keyGroupIdx) throws IOException {
 		Preconditions.checkState(useLegacySynchronousSnapshots);
 		InternalTimerServiceSerializationProxy<K> serializationProxy =
@@ -138,7 +155,7 @@ public class InternalTimeServiceManager<K> {
 
 		serializationProxy.write(stream);
 	}
-
+	// 重启恢复InternalTimeService
 	public void restoreStateForKeyGroup(
 			InputStream stream,
 			int keyGroupIdx,

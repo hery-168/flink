@@ -282,6 +282,9 @@ public class SystemProcessingTimeService extends ProcessingTimeService {
 			synchronized (lock) {
 				try {
 					if (serviceStatus.get() == STATUS_ALIVE) {
+						//调用 ProcessingTimeCallback.onProcessingTime
+						//ProcessingTimeCallback就是在InternalTimerServiceImpl.registerProcessingTimeTimer 调用是传入进来的，传入的是当前对象this
+						//也就是会调用InternalTimerServiceImpl.onProcessingTime方法
 						target.onProcessingTime(timestamp);
 					}
 				} catch (Throwable t) {

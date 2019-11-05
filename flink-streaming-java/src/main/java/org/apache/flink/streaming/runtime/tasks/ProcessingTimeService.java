@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
  *         will result in a hard exception.</li>
  * </ol>
  */
+// 负责processing time 的处理类，实现类是SystemProcessingTimeService
 public abstract class ProcessingTimeService {
 
 	/**
@@ -54,6 +55,7 @@ public abstract class ProcessingTimeService {
 	 * @return The future that represents the scheduled task. This always returns some future,
 	 *         even if the timer was shut down
 	 */
+	// 注册一个具体的定时器
 	public abstract ScheduledFuture<?> registerTimer(long timestamp, ProcessingTimeCallback target);
 
 	/**
