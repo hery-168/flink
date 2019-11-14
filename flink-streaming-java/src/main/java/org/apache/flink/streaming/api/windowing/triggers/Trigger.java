@@ -65,6 +65,7 @@ public abstract class Trigger<T, W extends Window> implements Serializable {
 	 * @param window The window to which the element is being added.
 	 * @param ctx A context object that can be used to register timer callbacks.
 	 */
+	//进入窗口的每个元素都会调用该方法
 	public abstract TriggerResult onElement(T element, long timestamp, W window, TriggerContext ctx) throws Exception;
 
 	/**
@@ -74,6 +75,7 @@ public abstract class Trigger<T, W extends Window> implements Serializable {
 	 * @param window The window for which the timer fired.
 	 * @param ctx A context object that can be used to register timer callbacks.
 	 */
+	//处理时间timer触发的时候会被调用
 	public abstract TriggerResult onProcessingTime(long time, W window, TriggerContext ctx) throws Exception;
 
 	/**
@@ -83,6 +85,7 @@ public abstract class Trigger<T, W extends Window> implements Serializable {
 	 * @param window The window for which the timer fired.
 	 * @param ctx A context object that can be used to register timer callbacks.
 	 */
+	//事件时间timer触发的时候被调用
 	public abstract TriggerResult onEventTime(long time, W window, TriggerContext ctx) throws Exception;
 
 	/**
@@ -104,6 +107,7 @@ public abstract class Trigger<T, W extends Window> implements Serializable {
 	 * @param window The new window that results from the merge.
 	 * @param ctx A context object that can be used to register timer callbacks and access state.
 	 */
+	// 合并窗口
 	public void onMerge(W window, OnMergeContext ctx) throws Exception {
 		throw new UnsupportedOperationException("This trigger does not support merging.");
 	}
@@ -114,6 +118,7 @@ public abstract class Trigger<T, W extends Window> implements Serializable {
 	 * and {@link TriggerContext#registerProcessingTimeTimer(long)} should be deleted here as
 	 * well as state acquired using {@link TriggerContext#getPartitionedState(StateDescriptor)}.
 	 */
+	//是执行窗口的删除操作
 	public abstract void clear(W window, TriggerContext ctx) throws Exception;
 
 	// ------------------------------------------------------------------------

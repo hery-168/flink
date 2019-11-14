@@ -51,6 +51,7 @@ public abstract class WindowAssigner<T, W extends Window> implements Serializabl
 	 * @param timestamp The timestamp of the element.
 	 * @param context The {@link WindowAssignerContext} in which the assigner operates.
 	 */
+	// 指定元素数据哪个窗口，返回窗口的集合
 	public abstract Collection<W> assignWindows(T element, long timestamp, WindowAssignerContext context);
 
 	/**
@@ -62,12 +63,14 @@ public abstract class WindowAssigner<T, W extends Window> implements Serializabl
 	 * Returns a {@link TypeSerializer} for serializing windows that are assigned by
 	 * this {@code WindowAssigner}.
 	 */
+	// 获取窗口序列化
 	public abstract TypeSerializer<W> getWindowSerializer(ExecutionConfig executionConfig);
 
 	/**
 	 * Returns {@code true} if elements are assigned to windows based on event time,
 	 * {@code false} otherwise.
 	 */
+	// 是否事件时间
 	public abstract boolean isEventTime();
 
 	/**

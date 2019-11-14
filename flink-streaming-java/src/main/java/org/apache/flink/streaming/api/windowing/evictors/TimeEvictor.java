@@ -65,15 +65,18 @@ public class TimeEvictor<W extends Window> implements Evictor<Object, W> {
 	}
 
 	private void evict(Iterable<TimestampedValue<Object>> elements, int size, EvictorContext ctx) {
+		// 如果element没有timestamp，直接返回
 		if (!hasTimestamp(elements)) {
 			return;
 		}
-
+		// 获取elements中最大的时间戳（到来最晚的元素的时间）
 		long currentTime = getMaxTimestamp(elements);
+		// 截止时间为： 到来最晚的元素的时间 - 窗口大小（可以理解为保留最近的多久的元素）
 		long evictCutoff = currentTime - windowSize;
 
 		for (Iterator<TimestampedValue<Object>> iterator = elements.iterator(); iterator.hasNext(); ) {
 			TimestampedValue<Object> record = iterator.next();
+			// 清除所有时间戳小于截止时间的元素
 			if (record.getTimestamp() <= evictCutoff) {
 				iterator.remove();
 			}

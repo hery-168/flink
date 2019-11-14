@@ -35,75 +35,82 @@ import java.util.Iterator;
  *
  * @param <W> The type of {@link Window Windows} on which this {@code Evictor} can operate.
  */
+//通过计算DeltaFunction的值（依次传入每个元素和最后一个元素），
+// 并将其与threshold进行对比，如果函数计算结果大于等于threshold，则该元素会被移除
 @PublicEvolving
 public class DeltaEvictor<T, W extends Window> implements Evictor<T, W> {
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	DeltaFunction<T> deltaFunction;
-	private double threshold;
-	private final boolean doEvictAfter;
+    DeltaFunction<T> deltaFunction;
+    private double threshold;
+    private final boolean doEvictAfter;
 
-	private DeltaEvictor(double threshold, DeltaFunction<T> deltaFunction) {
-		this.deltaFunction = deltaFunction;
-		this.threshold = threshold;
-		this.doEvictAfter = false;
-	}
+    private DeltaEvictor(double threshold, DeltaFunction<T> deltaFunction) {
+        this.deltaFunction = deltaFunction;
+        this.threshold = threshold;
+        this.doEvictAfter = false;
+    }
 
-	private DeltaEvictor(double threshold, DeltaFunction<T> deltaFunction, boolean doEvictAfter) {
-		this.deltaFunction = deltaFunction;
-		this.threshold = threshold;
-		this.doEvictAfter = doEvictAfter;
-	}
+    private DeltaEvictor(double threshold, DeltaFunction<T> deltaFunction, boolean doEvictAfter) {
+        this.deltaFunction = deltaFunction;
+        this.threshold = threshold;
+        this.doEvictAfter = doEvictAfter;
+    }
 
-	@Override
-	public void evictBefore(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext ctx) {
-		if (!doEvictAfter) {
-			evict(elements, size, ctx);
-		}
-	}
+    @Override
+    public void evictBefore(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext ctx) {
+        if (!doEvictAfter) {
+            evict(elements, size, ctx);
+        }
+    }
 
-	@Override
-	public void evictAfter(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext ctx) {
-		if (doEvictAfter) {
-			evict(elements, size, ctx);
-		}
-	}
+    @Override
+    public void evictAfter(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext ctx) {
+        if (doEvictAfter) {
+            evict(elements, size, ctx);
+        }
+    }
 
-	private void evict(Iterable<TimestampedValue<T>> elements, int size, EvictorContext ctx) {
-		TimestampedValue<T> lastElement = Iterables.getLast(elements);
-		for (Iterator<TimestampedValue<T>> iterator = elements.iterator(); iterator.hasNext();){
-			TimestampedValue<T> element = iterator.next();
-			if (deltaFunction.getDelta(element.getValue(), lastElement.getValue()) >= this.threshold) {
-				iterator.remove();
-			}
-		}
-	}
+    //通过计算DeltaFunction的值（依次传入每个元素和最后一个元素），
+	// 并将其与threshold进行对比，如果函数计算结果大于等于threshold，则该元素会被移除
+    private void evict(Iterable<TimestampedValue<T>> elements, int size, EvictorContext ctx) {
+		// 获取最后一个元素
+        TimestampedValue<T> lastElement = Iterables.getLast(elements);
+        for (Iterator<TimestampedValue<T>> iterator = elements.iterator(); iterator.hasNext(); ) {
+            TimestampedValue<T> element = iterator.next();
+			// 依次计算每个元素和最后一个元素的delta值，同时和threshold的值进行比较
+			// 若计算结果大于threshold值或者是相等，则该元素会被移除
+            if (deltaFunction.getDelta(element.getValue(), lastElement.getValue()) >= this.threshold) {
+                iterator.remove();
+            }
+        }
+    }
 
-	@Override
-	public String toString() {
-		return "DeltaEvictor(" +  deltaFunction + ", " + threshold + ")";
-	}
+    @Override
+    public String toString() {
+        return "DeltaEvictor(" + deltaFunction + ", " + threshold + ")";
+    }
 
-	/**
-	 * Creates a {@code DeltaEvictor} from the given threshold and {@code DeltaFunction}.
-	 * Eviction is done before the window function.
-	 *
-	 * @param threshold The threshold
-	 * @param deltaFunction The {@code DeltaFunction}
-	 */
-	public static <T, W extends Window> DeltaEvictor<T, W> of(double threshold, DeltaFunction<T> deltaFunction) {
-		return new DeltaEvictor<>(threshold, deltaFunction);
-	}
-
-	/**
-	 * Creates a {@code DeltaEvictor} from the given threshold, {@code DeltaFunction}.
-	 * Eviction is done before/after the window function based on the value of doEvictAfter.
-	 *
-	 * @param threshold The threshold
-	 * @param deltaFunction The {@code DeltaFunction}
-	 * @param doEvictAfter Whether eviction should be done after window function
+    /**
+     * Creates a {@code DeltaEvictor} from the given threshold and {@code DeltaFunction}.
+     * Eviction is done before the window function.
+     *
+     * @param threshold     The threshold
+     * @param deltaFunction The {@code DeltaFunction}
      */
-	public static <T, W extends Window> DeltaEvictor<T, W> of(double threshold, DeltaFunction<T> deltaFunction, boolean doEvictAfter) {
-		return new DeltaEvictor<>(threshold, deltaFunction, doEvictAfter);
-	}
+    public static <T, W extends Window> DeltaEvictor<T, W> of(double threshold, DeltaFunction<T> deltaFunction) {
+        return new DeltaEvictor<>(threshold, deltaFunction);
+    }
+
+    /**
+     * Creates a {@code DeltaEvictor} from the given threshold, {@code DeltaFunction}.
+     * Eviction is done before/after the window function based on the value of doEvictAfter.
+     *
+     * @param threshold     The threshold
+     * @param deltaFunction The {@code DeltaFunction}
+     * @param doEvictAfter  Whether eviction should be done after window function
+     */
+    public static <T, W extends Window> DeltaEvictor<T, W> of(double threshold, DeltaFunction<T> deltaFunction, boolean doEvictAfter) {
+        return new DeltaEvictor<>(threshold, deltaFunction, doEvictAfter);
+    }
 }
