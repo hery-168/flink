@@ -31,6 +31,7 @@ public interface RestartStrategy {
 	 *
 	 * @return true if restart is possible, otherwise false
 	 */
+	// 是否能够重启
 	boolean canRestart();
 
 	/**
@@ -43,5 +44,6 @@ public interface RestartStrategy {
 	 * @param restarter The hook to restart the ExecutionGraph
 	 * @param executor An scheduled executor to delay the restart
 	 */
+	// 重启
 	void restart(RestartCallback restarter, ScheduledExecutor executor);
 }

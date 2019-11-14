@@ -39,10 +39,11 @@ public class RestartStrategies {
 	 *
 	 * @return NoRestartStrategyConfiguration
 	 */
+	// 不重启
 	public static RestartStrategyConfiguration noRestart() {
 		return new NoRestartStrategyConfiguration();
 	}
-
+	// 根据集群的重启策略
 	public static RestartStrategyConfiguration fallBackRestart() {
 		return new FallbackRestartStrategyConfiguration();
 	}
@@ -54,6 +55,7 @@ public class RestartStrategies {
 	 * @param delayBetweenAttempts Delay in-between restart attempts for the FixedDelayRestartStrategy
 	 * @return FixedDelayRestartStrategy
 	 */
+	//固定延迟重启
 	public static RestartStrategyConfiguration fixedDelayRestart(int restartAttempts, long delayBetweenAttempts) {
 		return fixedDelayRestart(restartAttempts, Time.of(delayBetweenAttempts, TimeUnit.MILLISECONDS));
 	}
@@ -76,6 +78,7 @@ public class RestartStrategies {
 	 * @param failureInterval Time interval for failures
 	 * @param delayInterval Delay in-between restart attempts
 	 */
+	// 失败率重启策略
 	public static FailureRateRestartStrategyConfiguration failureRateRestart(
 			int failureRate, Time failureInterval, Time delayInterval) {
 		return new FailureRateRestartStrategyConfiguration(failureRate, failureInterval, delayInterval);
