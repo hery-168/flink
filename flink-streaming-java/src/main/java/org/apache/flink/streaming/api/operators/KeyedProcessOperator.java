@@ -91,6 +91,7 @@ public class KeyedProcessOperator<K, IN, OUT>
 			InternalTimer<K, VoidNamespace> timer) throws Exception {
 		onTimerContext.timeDomain = timeDomain;
 		onTimerContext.timer = timer;
+		//调用用户函数中的中onTimer 方法
 		userFunction.onTimer(timer.getTimestamp(), onTimerContext, collector);
 		onTimerContext.timeDomain = null;
 		onTimerContext.timer = null;

@@ -129,7 +129,7 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N>, 
      * </ol>
      * This method can be called multiple times, as long as it is called with the same serializers.
      */
-    // 主要用于时间状态恢复初始化
+    // 启动时间服务
     public void startTimerService(
             TypeSerializer<K> keySerializer,
             TypeSerializer<N> namespaceSerializer,
@@ -288,6 +288,7 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N>, 
         while ((timer = eventTimeTimersQueue.peek()) != null && timer.getTimestamp() <= time) {
             eventTimeTimersQueue.poll();
             keyContext.setCurrentKey(timer.getKey());
+
             triggerTarget.onEventTime(timer);
         }
     }

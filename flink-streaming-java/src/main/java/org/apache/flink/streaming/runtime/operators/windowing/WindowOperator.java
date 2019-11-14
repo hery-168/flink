@@ -106,11 +106,11 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 	// ------------------------------------------------------------------------
 	// Configuration values and user functions
 	// ------------------------------------------------------------------------
-
+	// 窗口分配器
 	protected final WindowAssigner<? super IN, W> windowAssigner;
-
+	//key 选择器
 	private final KeySelector<IN, K> keySelector;
-
+	// 触发器 决定什么时候触发窗口操作
 	private final Trigger<? super IN, ? super W> trigger;
 
 	private final StateDescriptor<? extends AppendingState<IN, ACC>, ?> windowStateDescriptor;
@@ -221,6 +221,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 		this.numLateRecordsDropped = metrics.counter(LATE_ELEMENTS_DROPPED_METRIC_NAME);
 		timestampedCollector = new TimestampedCollector<>(output);
 
+		//初始化时间服务  triggerable 就是当前的WindowOperator对象
 		internalTimerService =
 				getInternalTimerService("window-timers", windowSerializer, this);
 
@@ -292,6 +293,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 
 	@Override
 	public void processElement(StreamRecord<IN> element) throws Exception {
+		//一个Window对象的集合
 		final Collection<W> elementWindows = windowAssigner.assignWindows(
 			element.getValue(), element.getTimestamp(), windowAssignerContext);
 
@@ -406,6 +408,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 				if (triggerResult.isPurge()) {
 					windowState.clear();
 				}
+				//注册 不管是处理时间窗口还是事件时间窗口 都会调用registerCleanupTimer方法完成真正的定时注册
 				registerCleanupTimer(window);
 			}
 		}
@@ -593,12 +596,14 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 	 * 					the window whose state to discard
 	 */
 	protected void registerCleanupTimer(W window) {
+		// 首先会计算出窗口的触发时间
 		long cleanupTime = cleanupTime(window);
 		if (cleanupTime == Long.MAX_VALUE) {
 			// don't set a GC timer for "end of time"
 			return;
 		}
-
+		//按照时间类型进行注册 triggerContext表示的是WindowOperator.Context对象
+		//在注册相应类型触发器时，实际上会调用在WindowOperator 在open 中初始化的InternalTimerService来完成相应的注册定时器
 		if (windowAssigner.isEventTime()) {
 			triggerContext.registerEventTimeTimer(cleanupTime);
 		} else {
@@ -878,6 +883,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 
 		@Override
 		public void registerEventTimeTimer(long time) {
+			// 调用 InternalTimerService 来进行注册 event time
 			internalTimerService.registerEventTimeTimer(window, time);
 		}
 
