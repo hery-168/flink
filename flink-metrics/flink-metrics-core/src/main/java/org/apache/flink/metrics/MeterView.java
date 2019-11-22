@@ -34,14 +34,19 @@ package org.apache.flink.metrics;
  */
 public class MeterView implements Meter, View {
 	/** The underlying counter maintaining the count. */
+	//底层使用的计算器
 	private final Counter counter;
 	/** The time-span over which the average is calculated. */
+	//计算平均值的事件跨度
 	private final int timeSpanInSeconds;
 	/** Circular array containing the history of values. */
+	//包含历史数据的循环数组
 	private final long[] values;
 	/** The index in the array for the current time. */
+	//当前时间在数组中的索引
 	private int time = 0;
 	/** The last rate we computed. */
+	//最新计算的rate
 	private double currentRate = 0;
 
 	public MeterView(int timeSpanInSeconds) {
@@ -53,9 +58,13 @@ public class MeterView implements Meter, View {
 		// the time-span must be larger than the update-interval as otherwise the array has a size of 1,
 		// for which no rate can be computed as no distinct before/after measurement exists.
 		this.timeSpanInSeconds = Math.max(
+				//这里的操作是为了让时间跨度刚好是 UPDATE_INTERVAL_SECONDS 的整数倍
 			timeSpanInSeconds - (timeSpanInSeconds % UPDATE_INTERVAL_SECONDS),
 			UPDATE_INTERVAL_SECONDS);
 		this.values = new long[this.timeSpanInSeconds / UPDATE_INTERVAL_SECONDS + 1];
+		// 说明 比如timeSpanInSeconds 传入的值是12，代表我们的时间跨度是0到12，然后通过Math.max()方法计算后timeSpanInSeconds为10，这个值
+		// 一定是UPDATE_INTERVAL_SECONDS的倍数，然后计算数组的长度
+		//this.timeSpanInSeconds / UPDATE_INTERVAL_SECONDS + 1 也就是10/5+1 = 3,也就是数组大小为3，
 	}
 
 	@Override
@@ -78,6 +87,7 @@ public class MeterView implements Meter, View {
 		return currentRate;
 	}
 
+	// 会被周期的调用，进行更新values数组里的值
 	@Override
 	public void update() {
 		time = (time + 1) % values.length;

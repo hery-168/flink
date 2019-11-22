@@ -40,6 +40,7 @@ public interface MetricGroup {
 	 * @param name name of the counter
 	 * @return the created counter
 	 */
+	//按给定的名字创建注册一个counter
 	Counter counter(int name);
 
 	/**
@@ -58,6 +59,7 @@ public interface MetricGroup {
 	 * @param <C>     counter type
 	 * @return the given counter
 	 */
+	// 注册一个counter
 	<C extends Counter> C counter(int name, C counter);
 
 	/**
@@ -78,6 +80,7 @@ public interface MetricGroup {
 	 * @param <T>   return type of the gauge
 	 * @return the given gauge
 	 */
+	// 注册一个gauge
 	<T, G extends Gauge<T>> G gauge(int name, G gauge);
 
 	/**
@@ -148,6 +151,7 @@ public interface MetricGroup {
 	 * @param name name of the group
 	 * @return the created group
 	 */
+	// 创建一个新组，然后添加到这个组的子组
 	MetricGroup addGroup(String name);
 
 	/**

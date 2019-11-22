@@ -31,6 +31,7 @@ public interface Histogram extends Metric {
 	 *
 	 * @param value Value to update the histogram with
 	 */
+	//更新值
 	void update(long value);
 
 	/**
@@ -38,6 +39,7 @@ public interface Histogram extends Metric {
 	 *
 	 * @return Count of seen elements
 	 */
+	// 获取可见元素的数量
 	long getCount();
 
 	/**
@@ -45,5 +47,6 @@ public interface Histogram extends Metric {
 	 *
 	 * @return Statistics about the currently recorded elements
 	 */
+	//为当前记录的元素创建统计信息
 	HistogramStatistics getStatistics();
 }

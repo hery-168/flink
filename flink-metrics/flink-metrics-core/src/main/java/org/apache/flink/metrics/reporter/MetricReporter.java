@@ -42,11 +42,14 @@ public interface MetricReporter {
 	 *
 	 * @param config A properties object that contains all parameters set for this reporter.
 	 */
+	// 进行初始化配置操作，由于子类都是用无参构造函数，通过反射进行实例化，
+	// 所以相关初始化的工作都是放在这里进行的，并且这个方法需要在实例化后，就需要调用该方法进行相关初始化的工作
 	void open(MetricConfig config);
 
 	/**
 	 * Closes this reporter. Should be used to close channels, streams and release resources.
 	 */
+	// 关闭reporter
 	void close();
 
 	// ------------------------------------------------------------------------
@@ -60,6 +63,7 @@ public interface MetricReporter {
 	 * @param metricName  the name of the metric
 	 * @param group       the group that contains the metric
 	 */
+	// 当一个新的metric添加的时候，调用该方法
 	void notifyOfAddedMetric(Metric metric, String metricName, MetricGroup group);
 
 	/**
@@ -69,5 +73,6 @@ public interface MetricReporter {
 	 * @param metricName  the name of the metric
 	 * @param group       the group that contains the metric
 	 */
+	// 当一个metric被移除的时候调用
 	void notifyOfRemovedMetric(Metric metric, String metricName, MetricGroup group);
 }

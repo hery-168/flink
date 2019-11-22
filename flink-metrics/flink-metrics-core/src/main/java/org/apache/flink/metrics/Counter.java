@@ -25,6 +25,7 @@ public interface Counter extends Metric {
 
 	/**
 	 * Increment the current count by 1.
+	 * 默认增加1
 	 */
 	void inc();
 
@@ -33,11 +34,13 @@ public interface Counter extends Metric {
 	 *
 	 * @param n value to increment the current count by
 	 */
+	// 增加给定的n
 	void inc(long n);
 
 	/**
 	 * Decrement the current count by 1.
 	 */
+	// 减少 1
 	void dec();
 
 	/**
@@ -45,6 +48,7 @@ public interface Counter extends Metric {
 	 *
 	 * @param n value to decrement the current count by
 	 */
+	// 减少 n
 	void dec(long n);
 
 	/**
@@ -52,5 +56,6 @@ public interface Counter extends Metric {
 	 *
 	 * @return current count
 	 */
+	// 获取统计的值
 	long getCount();
 }

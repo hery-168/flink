@@ -28,5 +28,6 @@ public interface Gauge<T> extends Metric {
 	 *
 	 * @return calculated value
 	 */
+	// 计算并返回值
 	T getValue();
 }
