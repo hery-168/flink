@@ -131,6 +131,7 @@ public class InternalTimeServiceManager<K> {
 	// 在event time 中使用
 	public void advanceWatermark(Watermark watermark) throws Exception {
 		for (InternalTimerServiceImpl<?, ?> service : timerServices.values()) {
+			// 循环所有并行执行定时器任务
 			service.advanceWatermark(watermark.getTimestamp());
 		}
 	}

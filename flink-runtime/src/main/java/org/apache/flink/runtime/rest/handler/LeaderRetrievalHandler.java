@@ -66,6 +66,7 @@ public abstract class LeaderRetrievalHandler<T extends RestfulGateway> extends S
 		this.responseHeaders = Preconditions.checkNotNull(responseHeaders);
 	}
 
+	// LeaderRetrievalHandler 继承自 SimpleChannelInboundHandler，在 netty 接收数据时，会回调
 	@Override
 	protected void channelRead0(
 		ChannelHandlerContext channelHandlerContext,

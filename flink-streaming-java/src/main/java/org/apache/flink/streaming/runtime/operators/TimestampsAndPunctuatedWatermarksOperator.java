@@ -46,12 +46,15 @@ public class TimestampsAndPunctuatedWatermarksOperator<T>
 	@Override
 	public void processElement(StreamRecord<T> element) throws Exception {
 		final T value = element.getValue();
+		// 通过用户的代码获取到事件时间，注入到element里面就直接往下个opeartor发送
 		final long newTimestamp = userFunction.extractTimestamp(value,
 				element.hasTimestamp() ? element.getTimestamp() : Long.MIN_VALUE);
 
 		output.collect(element.replace(element.getValue(), newTimestamp));
-
+		//通过用户代码获取水印，这里会判断水印是否为null
+		//不为null的就直接往下游emit 了
 		final Watermark nextWatermark = userFunction.checkAndGetNextWatermark(value, newTimestamp);
+
 		if (nextWatermark != null && nextWatermark.getTimestamp() > currentWatermark) {
 			currentWatermark = nextWatermark.getTimestamp();
 			output.emitWatermark(nextWatermark);

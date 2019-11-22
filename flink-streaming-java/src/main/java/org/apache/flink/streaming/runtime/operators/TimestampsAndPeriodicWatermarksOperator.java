@@ -31,6 +31,7 @@ import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
  *
  * @param <T> The type of the input elements
  */
+//流运算符，用于从流元素中提取时间戳并定期生成水印
 public class TimestampsAndPeriodicWatermarksOperator<T>
 		extends AbstractUdfStreamOperator<T, AssignerWithPeriodicWatermarks<T>>
 		implements OneInputStreamOperator<T, T>, ProcessingTimeCallback {
@@ -51,9 +52,11 @@ public class TimestampsAndPeriodicWatermarksOperator<T>
 		super.open();
 
 		currentWatermark = Long.MIN_VALUE;
+		// 获取周期性生成水印的间隔
 		watermarkInterval = getExecutionConfig().getAutoWatermarkInterval();
-
+		// 周期性水印，是通过处理时间来实现的，一开始会获取当前的真实时间+我们设置的水印间隔 来作为一个定时触发器
 		if (watermarkInterval > 0) {
+			// 获取当前的处理时间
 			long now = getProcessingTimeService().getCurrentProcessingTime();
 			getProcessingTimeService().registerTimer(now + watermarkInterval, this);
 		}
@@ -61,22 +64,24 @@ public class TimestampsAndPeriodicWatermarksOperator<T>
 
 	@Override
 	public void processElement(StreamRecord<T> element) throws Exception {
+		// 获取事件时间，然后发送出去
 		final long newTimestamp = userFunction.extractTimestamp(element.getValue(),
 				element.hasTimestamp() ? element.getTimestamp() : Long.MIN_VALUE);
 
 		output.collect(element.replace(element.getValue(), newTimestamp));
 	}
 
+	// 到了一定的间隔时间 会触发onProcessingTime 这个方法里面的内容
 	@Override
 	public void onProcessingTime(long timestamp) throws Exception {
 		// register next timer
 		Watermark newWatermark = userFunction.getCurrentWatermark();
 		if (newWatermark != null && newWatermark.getTimestamp() > currentWatermark) {
 			currentWatermark = newWatermark.getTimestamp();
-			// emit watermark
+			// emit watermark 发送一个水印
 			output.emitWatermark(newWatermark);
 		}
-
+		// 继续注册一个以当前时间+间隔，作为一个定时器 ，这样一个周期性触发水印往下游发送的实现就完成了
 		long now = getProcessingTimeService().getCurrentProcessingTime();
 		getProcessingTimeService().registerTimer(now + watermarkInterval, this);
 	}

@@ -180,7 +180,7 @@ public class StreamInputProcessor<IN> {
 					StreamElement recordOrMark = deserializationDelegate.getInstance();
 
 					if (recordOrMark.isWatermark()) {
-						// handle watermark
+						// handle watermark 接收水印
 						statusWatermarkValve.inputWatermark(recordOrMark.asWatermark(), currentChannel);
 						continue;
 					} else if (recordOrMark.isStreamStatus()) {
@@ -260,6 +260,7 @@ public class StreamInputProcessor<IN> {
 			try {
 				synchronized (lock) {
 					watermarkGauge.setCurrentWatermark(watermark.getTimestamp());
+					//
 					operator.processWatermark(watermark);
 				}
 			} catch (Exception e) {

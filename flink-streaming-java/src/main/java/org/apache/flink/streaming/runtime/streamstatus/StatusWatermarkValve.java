@@ -108,6 +108,8 @@ public class StatusWatermarkValve {
 				}
 
 				// now, attempt to find a new min watermark across all aligned channels
+				//现在，尝试在所有对齐的channel中找到新的最小水印
+				// 取一个最小的水印
 				findAndOutputNewMinWatermarkAcrossAlignedChannels();
 			}
 		}
@@ -175,6 +177,7 @@ public class StatusWatermarkValve {
 		boolean hasAlignedChannels = false;
 
 		// determine new overall watermark by considering only watermark-aligned channels across all channels
+		// 在所有的channel中，寻找最小时间的水印
 		for (InputChannelStatus channelStatus : channelStatuses) {
 			if (channelStatus.isWatermarkAligned) {
 				hasAlignedChannels = true;
@@ -184,8 +187,10 @@ public class StatusWatermarkValve {
 
 		// we acknowledge and output the new overall watermark if it really is aggregated
 		// from some remaining aligned channel, and is also larger than the last output watermark
+		//我们确认并输出新的整体水印（如果它确实是从剩余的对齐通道中汇总而来的，并且也大于上一个输出的水印）
 		if (hasAlignedChannels && newMinWatermark > lastOutputWatermark) {
 			lastOutputWatermark = newMinWatermark;
+			//定时器是否触发判断
 			outputHandler.handleWatermark(new Watermark(lastOutputWatermark));
 		}
 	}

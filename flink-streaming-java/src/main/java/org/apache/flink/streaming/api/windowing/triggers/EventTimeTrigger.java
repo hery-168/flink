@@ -37,15 +37,17 @@ public class EventTimeTrigger extends Trigger<Object, TimeWindow> {
 	public TriggerResult onElement(Object element, long timestamp, TimeWindow window, TriggerContext ctx) throws Exception {
 		if (window.maxTimestamp() <= ctx.getCurrentWatermark()) {
 			// if the watermark is already past the window fire immediately
-			return TriggerResult.FIRE;
+			return TriggerResult.FIRE;// 直接触发计算
 		} else {
-			ctx.registerEventTimeTimer(window.maxTimestamp());
-			return TriggerResult.CONTINUE;
+			ctx.registerEventTimeTimer(window.maxTimestamp());// 注册一个定时器
+			return TriggerResult.CONTINUE;// 说明水印还没有到达，也就是这条数据还属于窗口的右边界，也就是窗口还没有到达触发的时机
 		}
 	}
 
 	@Override
 	public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) {
+		//判断定时器的时间，变量time(前面我们将数据属于的窗口的右边界作为定时器的时间)
+		// 是否等于这个定时器的window窗口（初始化传入的namespace参数这里就是注册定时器的window）右边界的时间，来决定窗口是否触发
 		return time == window.maxTimestamp() ?
 			TriggerResult.FIRE :
 			TriggerResult.CONTINUE;

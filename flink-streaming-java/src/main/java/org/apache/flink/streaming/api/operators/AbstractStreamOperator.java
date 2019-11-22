@@ -793,8 +793,10 @@ public abstract class AbstractStreamOperator<OUT>
 
 	public void processWatermark(Watermark mark) throws Exception {
 		if (timeServiceManager != null) {
+			//包含定时器触发逻辑
 			timeServiceManager.advanceWatermark(mark);
 		}
+		// 把水印发出去
 		output.emitWatermark(mark);
 	}
 

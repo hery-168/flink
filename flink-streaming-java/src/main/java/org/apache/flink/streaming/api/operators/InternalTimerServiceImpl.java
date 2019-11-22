@@ -281,14 +281,15 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N>, 
 
     // 用于event 时间中
     public void advanceWatermark(long time) throws Exception {
+        // 使用最小水印更新当前的水印
         currentWatermark = time;
 
         InternalTimer<K, N> timer;
-
+        // 循环已经注册的定时器  并判断定时器时间是否小于当前最小水印时间，这是触发定时器的条件
         while ((timer = eventTimeTimersQueue.peek()) != null && timer.getTimestamp() <= time) {
             eventTimeTimersQueue.poll();
             keyContext.setCurrentKey(timer.getKey());
-
+            //定时器时间小于当前最小水印时间
             triggerTarget.onEventTime(timer);
         }
     }

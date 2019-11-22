@@ -329,6 +329,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 						}
 
 						triggerContext.key = key;
+						//把这个窗口做完这个context的namespace
 						triggerContext.window = mergeResult;
 
 						triggerContext.onMerge(mergedWindows);
@@ -361,7 +362,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 
 				triggerContext.key = key;
 				triggerContext.window = actualWindow;
-
+				//
 				TriggerResult triggerResult = triggerContext.onElement(element);
 
 				if (triggerResult.isFire()) {
@@ -450,7 +451,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 		}
 
 		TriggerResult triggerResult = triggerContext.onEventTime(timer.getTimestamp());
-
+		// 定时器是否触发窗口计算
 		if (triggerResult.isFire()) {
 			ACC contents = windowState.get();
 			if (contents != null) {
