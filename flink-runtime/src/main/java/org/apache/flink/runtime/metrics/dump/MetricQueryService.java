@@ -115,6 +115,7 @@ public class MetricQueryService extends UntypedActor {
 					this.meters.remove(metric);
 				}
 			} else if (message instanceof CreateDump) {
+				//接收到这个消息后，就会把当前所有的Metric数据进行序列化操作，得到一个MetricDumpSerialization.MetricSerializationResult序列化后的结果实例，并发送给请求者
 				MetricDumpSerialization.MetricSerializationResult dump = serializer.serialize(counters, gauges, histograms, meters);
 
 				dump = enforceSizeLimit(dump);
@@ -272,6 +273,7 @@ public class MetricQueryService extends UntypedActor {
 	 * @param metricName metric name
 	 * @param group      group the metric was added on
 	 */
+	//用来接收Metric添加的消息
 	public static void notifyOfAddedMetric(ActorRef service, Metric metric, String metricName, AbstractMetricGroup group) {
 		service.tell(new AddMetric(metricName, metric, group), null);
 	}
@@ -282,6 +284,7 @@ public class MetricQueryService extends UntypedActor {
 	 * @param service MetricQueryService to notify
 	 * @param metric  removed metric
 	 */
+	// 用于接收Metric删除的消息
 	public static void notifyOfRemovedMetric(ActorRef service, Metric metric) {
 		service.tell(new RemoveMetric(metric), null);
 	}

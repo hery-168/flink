@@ -98,47 +98,52 @@ public abstract class ScopeFormat {
 	// ------------------------------------------------------------------------
 
 	/** The scope format. */
+	// 原始格式
 	private final String format;
 
 	/** The format, split into components. */
+	//format按照分割符分割后的数组
 	private final String[] template;
-
+  // 这是template数组中，变量元素的索引
 	private final int[] templatePos;
 
 	private final int[] valuePos;
 
 	// ------------------------------------------------------------------------
-
+ //假设 入参值为 format="<host>.jobmanager" ，parent=null ， variables={"<host，job_id，job_name>"}
 	protected ScopeFormat(String format, ScopeFormat parent, String[] variables) {
 		checkNotNull(format, "format is null");
-
+		//将format这个字符串分割， rawComponents = {"<host>", "jobmanager"}
 		final String[] rawComponents = format.split("\\" + SCOPE_SEPARATOR);
 
 		// compute the template array
+		//根据rawComponents的第一个元素是为"*"，来判断是否要继承父组的范围
 		final boolean parentAsPrefix = rawComponents.length > 0 && rawComponents[0].equals(SCOPE_INHERIT_PARENT);
 		if (parentAsPrefix) {
+			//需要继承父组的范围，而父组有是null，则抛出异常
 			if (parent == null) {
 				throw new IllegalArgumentException("Component scope format requires parent prefix (starts with '"
 					+ SCOPE_INHERIT_PARENT + "'), but this component has no parent (is root component).");
 			}
-
+			//如果以 "*." 开头，则format至少需要有3个字符，否则就是无效字符，设置为 "<empty>"
 			this.format = format.length() > 2 ? format.substring(2) : "<empty>";
 
 			String[] parentTemplate = parent.template;
 			int parentLen = parentTemplate.length;
-
+			//将父组的范围和自身的范围，合并到一起
 			this.template = new String[parentLen + rawComponents.length - 1];
 			System.arraycopy(parentTemplate, 0, this.template, 0, parentLen);
 			System.arraycopy(rawComponents, 1, this.template, parentLen, rawComponents.length - 1);
 		}
 		else {
+			//不需要继承父组的范围，则直接赋值，format="<host>.jobmanager"，template={"<host>", "jobmanager"}
 			this.format = format.isEmpty() ? "<empty>" : format;
 			this.template = rawComponents;
 		}
 
 		// --- compute the replacement matrix ---
 		// a bit of clumsy Java collections code ;-)
-
+		// 将 variables={"<host>"} 转换为map {"<host>" -> 0}
 		HashMap<String, Integer> varToValuePos = arrayToMap(variables);
 		List<Integer> templatePos = new ArrayList<>();
 		List<Integer> valuePos = new ArrayList<>();
@@ -147,10 +152,12 @@ public abstract class ScopeFormat {
 			final String component = template[i];
 
 			// check if that is a variable
+			//检查当前这个组件是否是一个变量
 			if (component != null && component.length() >= 3 &&
 					component.charAt(0) == '<' && component.charAt(component.length() - 1) == '>') {
 
 				// this is a variable
+				//这是一个变量，则从上面的map中，获取其索引
 				Integer replacementPos = varToValuePos.get(component);
 				if (replacementPos != null) {
 					templatePos.add(i);

@@ -25,7 +25,7 @@ import org.apache.flink.runtime.metrics.groups.JobManagerMetricGroup;
  * The scope format for the {@link org.apache.flink.runtime.metrics.groups.JobMetricGroup}.
  */
 public class JobManagerJobScopeFormat extends ScopeFormat {
-
+	// format的默认值是 <host>.jobmanager
 	public JobManagerJobScopeFormat(String format, JobManagerScopeFormat parentFormat) {
 		super(format, parentFormat, new String[] {
 				SCOPE_HOST,
@@ -35,12 +35,14 @@ public class JobManagerJobScopeFormat extends ScopeFormat {
 	}
 
 	public String[] formatScope(JobManagerMetricGroup parent, JobID jid, String jobName) {
+		//获取template数组的一份拷贝，深拷贝
 		final String[] template = copyTemplate();
 		final String[] values = {
 				parent.hostname(),
 				valueOrNull(jid),
 				valueOrNull(jobName)
 		};
+		//使用hostname替换掉template中索引为0的元素<host>
 		return bindVariables(template, values);
 	}
 }

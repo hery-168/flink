@@ -68,18 +68,23 @@ public abstract class AbstractMetricGroup<A extends AbstractMetricGroup<?>> impl
 	// ------------------------------------------------------------------------
 
 	/** The parent group containing this group. */
+	//  用来保存这个MetricGroup的父MetricGroup
 	protected final A parent;
 
 	/** The map containing all variables and their associated values, lazily computed. */
+	// 保存所有的变量信息
 	protected volatile Map<String, String> variables;
 
 	/** The registry that this metrics group belongs to. */
+	// 度量组属于的注册表
 	protected final MetricRegistry registry;
 
 	/** All metrics that are directly contained in this group. */
+	//是用来保存当前MetricGroup中注册的Metric
 	private final Map<String, Metric> metrics = new HashMap<>();
 
 	/** All metric subgroups of this group. */
+	// 当前组中注册的子MetricGroup
 	private final Map<String, AbstractMetricGroup> groups = new HashMap<>();
 
 	/** The metrics scope represented by this group.
@@ -376,27 +381,32 @@ public abstract class AbstractMetricGroup<A extends AbstractMetricGroup<?>> impl
 			return;
 		}
 		// add the metric only if the group is still open
+		// 只有group仍然打开的情况下, 才添加这个metric
 		synchronized (this) {
 			if (!closed) {
 				// immediately put without a 'contains' check to optimize the common case (no collision)
 				// collisions are resolved later
+				//在没有进行"contains"校验下, 立即进行put操作, 来优化常见的情况(没有碰撞)
 				Metric prior = metrics.put(name, metric);
 
 				// check for collisions with other metric names
+				// 检查与其他度量名称的冲突
 				if (prior == null) {
 					// no other metric with this name yet
-
+					//这个名字还没有其他指标，也就是与注册在当前group下的metric没有名称冲突
 					if (groups.containsKey(name)) {
 						// we warn here, rather than failing, because metrics are tools that should not fail the
 						// program when used incorrectly
+						// 与注册在group下的子groups的名称由冲突，这里给出warn日志, 而不是fail, 因为metrics是工具, 当使用错误时, 不应该使得程序失败
 						LOG.warn("Name collision: Adding a metric with the same name as a metric subgroup: '" +
 								name + "'. Metric might not get properly reported. " + Arrays.toString(scopeComponents));
 					}
-
+					//这里就是桥梁起作用的地方
 					registry.register(metric, name, this);
 				}
 				else {
 					// we had a collision. put back the original value
+					//有碰撞, 放回原来的metric
 					metrics.put(name, prior);
 
 					// we warn here, rather than failing, because metrics are tools that should not fail the

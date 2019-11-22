@@ -47,6 +47,7 @@ public class ViewUpdater {
 	 * @param view metric that should be regularly updated
 	 */
 	public void notifyOfAddedView(View view) {
+		//就是想toAdd这个Set中添加一个新的元素，通过lock这个锁来实现同步。
 		synchronized (lock) {
 			toAdd.add(view);
 		}

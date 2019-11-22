@@ -59,12 +59,15 @@ public class MetricRegistryConfiguration {
 		Pattern.quote(ConfigConstants.METRICS_REPORTER_CLASS_SUFFIX));
 
 	// scope formats for the different components
+	// 格式的范围
 	private final ScopeFormats scopeFormats;
 
 	// delimiter for the scope strings
+	// 字符串分隔符
 	private final char delimiter;
 
 	// contains for every configured reporter its name and the configuration object
+	// reporter的配置列表，里面有report的名称和配置信息
 	private final List<Tuple2<String, Configuration>> reporterConfigurations;
 
 	private final long queryServiceMessageSizeLimit;
@@ -114,12 +117,13 @@ public class MetricRegistryConfiguration {
 	public static MetricRegistryConfiguration fromConfiguration(Configuration configuration) {
 		ScopeFormats scopeFormats;
 		try {
+			// 获取格式范围
 			scopeFormats = ScopeFormats.fromConfig(configuration);
 		} catch (Exception e) {
 			LOG.warn("Failed to parse scope format, using default scope formats", e);
 			scopeFormats = ScopeFormats.fromConfig(new Configuration());
 		}
-
+		// 设置分隔符
 		char delim;
 		try {
 			delim = configuration.getString(MetricOptions.SCOPE_DELIMITER).charAt(0);
@@ -128,6 +132,7 @@ public class MetricRegistryConfiguration {
 			delim = '.';
 		}
 
+		// 获取report的配置信息
 		String includedReportersString = configuration.getString(MetricOptions.REPORTERS_LIST, "");
 		Set<String> includedReporters = reporterListPattern.splitAsStream(includedReportersString)
 			.filter(r -> !r.isEmpty()) // splitting an empty string results in an empty string on jdk9+
