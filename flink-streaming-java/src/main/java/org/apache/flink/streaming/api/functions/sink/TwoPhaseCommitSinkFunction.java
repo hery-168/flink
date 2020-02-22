@@ -170,6 +170,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 	 *
 	 * @return newly created transaction.
 	 */
+	//开启一个事务，获得一个句柄
 	protected abstract TXN beginTransaction() throws Exception;
 
 	/**
@@ -180,6 +181,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 	 *
 	 * <p>Usually implementation involves flushing the data.
 	 */
+	//执行预提交
 	protected abstract void preCommit(TXN transaction) throws Exception;
 
 	/**
@@ -187,6 +189,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 	 * restarted and {@link TwoPhaseCommitSinkFunction#recoverAndCommit(Object)} will be called again for the
 	 * same transaction.
 	 */
+	//执行提交
 	protected abstract void commit(TXN transaction);
 
 	/**
@@ -201,6 +204,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 	/**
 	 * Abort a transaction.
 	 */
+	//放弃一个事务
 	protected abstract void abort(TXN transaction);
 
 	/**
@@ -228,6 +232,11 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 		invoke(currentTransactionHolder.handle, value, context);
 	}
 
+	/**
+	 *checkpoint完成之后的回调方法，负责对预提交的事务执行commit操作
+	 * @param checkpointId The ID of the checkpoint that has been completed.
+	 * @throws Exception
+	 */
 	@Override
 	public final void notifyCheckpointComplete(long checkpointId) throws Exception {
 		// the following scenarios are possible here
@@ -280,6 +289,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 
 			logWarningIfTimeoutAlmostReached(pendingTransaction);
 			try {
+				// 执行提交操作
 				commit(pendingTransaction.handle);
 			} catch (Throwable t) {
 				if (firstError == null) {
@@ -298,30 +308,47 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 		}
 	}
 
+	/**
+	 * 与checkpoint同步周期性执行的方法，
+	 * 首先执行preCommit对本次checkpoint事务执行预提交操作，
+	 * 并且开启一个新的事务提供给下一次checkpoint使用，
+	 * 然后将这两个事务句柄存放在state中进行容错，
+	 * preCommit提交的事务就是在失败后重启需要commit的事务，而新开启的事务就是在失败后重启需要放弃的事务
+	 */
 	@Override
 	public void snapshotState(FunctionSnapshotContext context) throws Exception {
 		// this is like the pre-commit of a 2-phase-commit transaction
 		// we are ready to commit and remember the transaction
 
 		checkState(currentTransactionHolder != null, "bug: no transaction object when performing state snapshot");
-
+		// 获取checkpoint 的id
 		long checkpointId = context.getCheckpointId();
 		LOG.debug("{} - checkpoint {} triggered, flushing transaction '{}'", name(), context.getCheckpointId(), currentTransactionHolder);
-
+		// 执行预提交操作
 		preCommit(currentTransactionHolder.handle);
 		pendingCommitTransactions.put(checkpointId, currentTransactionHolder);
 		LOG.debug("{} - stored pending transactions {}", name(), pendingCommitTransactions);
-
+		// 开始一个新事务，提供下次checkpoint使用
 		currentTransactionHolder = beginTransactionInternal();
 		LOG.debug("{} - started new transaction '{}'", name(), currentTransactionHolder);
 
 		state.clear();
+		// 把这两个事务的句柄存放到state中进行容错
 		state.add(new State<>(
 			this.currentTransactionHolder,
 			new ArrayList<>(pendingCommitTransactions.values()),
 			userContext));
 	}
 
+	/**
+	 * 状态初始化方法，只会被调用一次，
+	 * 第一件事情是用来恢复上次checkpoint完成预提交的事务与下一次checkpoint开始的事务，
+	 * 对于上次checkpoint完成预提交说明该checkpoint已经完成，那么执行commit操作，
+	 * 下一次checkpoint开始的事务说明该checkpoint，那么执行abort操作，
+	 * 第二件事情是开启一个新的事务，给新的checkpoint使用
+	 * @param context the context for initializing the operator
+	 * @throws Exception
+	 */
 	@Override
 	public void initializeState(FunctionInitializationContext context) throws Exception {
 		// when we are restoring state with pendingCommitTransactions, we don't really know whether the
@@ -337,10 +364,11 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 
 		// we can have more than one transaction to check in case of a scale-in event, or
 		// for the reasons discussed in the 'notifyCheckpointComplete()' method.
-
+		// 获取状态
 		state = context.getOperatorStateStore().getListState(stateDescriptor);
 
 		boolean recoveredUserContext = false;
+		// 判断是否能恢复
 		if (context.isRestored()) {
 			LOG.info("{} - restoring state", name());
 			for (State<TXN, CONTEXT> operatorState : state.get()) {
@@ -365,11 +393,11 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT>
 		// if in restore we didn't get any userContext or we are initializing from scratch
 		if (!recoveredUserContext) {
 			LOG.info("{} - no state to restore", name());
-
+			// 初始化用户上下文
 			userContext = initializeUserContext();
 		}
 		this.pendingCommitTransactions.clear();
-
+		// 开始一个事务，并且获取句柄
 		currentTransactionHolder = beginTransactionInternal();
 		LOG.debug("{} - started new transaction '{}'", name(), currentTransactionHolder);
 	}

@@ -320,30 +320,33 @@ public class StreamingFileSink<IN>
 	}
 
 	// --------------------------- Sink Methods -----------------------------
-
+	// 初始化状态
 	@Override
 	public void initializeState(FunctionInitializationContext context) throws Exception {
 		final int subtaskIndex = getRuntimeContext().getIndexOfThisSubtask();
+		// 创建桶
 		this.buckets = bucketsBuilder.createBuckets(subtaskIndex);
-
+		// 配置信息
 		final OperatorStateStore stateStore = context.getOperatorStateStore();
 		bucketStates = stateStore.getListState(BUCKET_STATE_DESC);
 		maxPartCountersState = stateStore.getUnionListState(MAX_PART_COUNTER_STATE_DESC);
 
 		if (context.isRestored()) {
+			// 调用桶的初始化状态方法
 			buckets.initializeState(bucketStates, maxPartCountersState);
 		}
 	}
-
+	// 完成checkpoint 发送通知
 	@Override
 	public void notifyCheckpointComplete(long checkpointId) throws Exception {
+		// 调用bucket的提交
 		buckets.commitUpToCheckpoint(checkpointId);
 	}
-
+	// 快照状态
 	@Override
 	public void snapshotState(FunctionSnapshotContext context) throws Exception {
 		Preconditions.checkState(bucketStates != null && maxPartCountersState != null, "sink has not been initialized");
-
+		// 调用bucket的快照状态方法
 		buckets.snapshotState(
 				context.getCheckpointId(),
 				bucketStates,
@@ -364,7 +367,7 @@ public class StreamingFileSink<IN>
 		buckets.onProcessingTime(currentTime);
 		processingTimeService.registerTimer(currentTime + bucketCheckInterval, this);
 	}
-
+	// 处理数据
 	@Override
 	public void invoke(IN value, SinkFunction.Context context) throws Exception {
 		buckets.onElement(value, context);
