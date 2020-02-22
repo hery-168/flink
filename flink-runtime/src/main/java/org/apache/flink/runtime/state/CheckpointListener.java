@@ -37,5 +37,6 @@ public interface CheckpointListener {
 	 * @param checkpointId The ID of the checkpoint that has been completed.
 	 * @throws Exception
 	 */
+	//checkpoint完成之后的通知方法，这里可以做一些额外的操作
 	void notifyCheckpointComplete(long checkpointId) throws Exception;
 }

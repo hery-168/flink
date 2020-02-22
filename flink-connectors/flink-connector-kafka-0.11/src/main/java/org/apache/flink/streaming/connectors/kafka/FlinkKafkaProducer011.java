@@ -612,6 +612,7 @@ public class FlinkKafkaProducer011<IN>
 		super.open(configuration);
 	}
 
+	//发送数据
 	@Override
 	public void invoke(KafkaTransactionState transaction, IN next, Context context) throws FlinkKafka011Exception {
 		checkErroneous();
@@ -645,6 +646,7 @@ public class FlinkKafkaProducer011<IN>
 			record = new ProducerRecord<>(targetTopic, null, timestamp, serializedKey, serializedValue);
 		}
 		pendingRecords.incrementAndGet();
+		//发送数据
 		transaction.producer.send(record, callback);
 	}
 
@@ -681,12 +683,16 @@ public class FlinkKafkaProducer011<IN>
 
 	// ------------------- Logic for handling checkpoint flushing -------------------------- //
 
+	// 开始一个事务
 	@Override
 	protected KafkaTransactionState beginTransaction() throws FlinkKafka011Exception {
 		switch (semantic) {
 			case EXACTLY_ONCE:
+				// 获取kafkaproducer 实例
 				FlinkKafkaProducer<byte[], byte[]> producer = createTransactionalProducer();
+				// 调用kafka producer 的开始事务方法
 				producer.beginTransaction();
+				// 返回句柄
 				return new KafkaTransactionState(producer.getTransactionalId(), producer);
 			case AT_LEAST_ONCE:
 			case NONE:
@@ -701,11 +707,13 @@ public class FlinkKafkaProducer011<IN>
 		}
 	}
 
+	//预提交
 	@Override
 	protected void preCommit(KafkaTransactionState transaction) throws FlinkKafka011Exception {
 		switch (semantic) {
 			case EXACTLY_ONCE:
 			case AT_LEAST_ONCE:
+				// 调用flush 把数据进行刷新
 				flush(transaction);
 				break;
 			case NONE:
@@ -716,10 +724,12 @@ public class FlinkKafkaProducer011<IN>
 		checkErroneous();
 	}
 
+	// 提交操作
 	@Override
 	protected void commit(KafkaTransactionState transaction) {
 		if (transaction.isTransactional()) {
 			try {
+				// 调用kafka 的producer 的提交事务方法
 				transaction.producer.commitTransaction();
 			} finally {
 				recycleTransactionalProducer(transaction.producer);
@@ -745,9 +755,11 @@ public class FlinkKafkaProducer011<IN>
 		}
 	}
 
+	// 终止操作
 	@Override
 	protected void abort(KafkaTransactionState transaction) {
 		if (transaction.isTransactional()) {
+			//调用kafka producer的终止事务
 			transaction.producer.abortTransaction();
 			recycleTransactionalProducer(transaction.producer);
 		}
@@ -768,7 +780,7 @@ public class FlinkKafkaProducer011<IN>
 		pendingRecords.decrementAndGet();
 	}
 
-	/**
+	/**有缓存数据刷新到kafka ，相当于预提交操作
 	 * Flush pending records.
 	 * @param transaction
 	 */
@@ -785,6 +797,7 @@ public class FlinkKafkaProducer011<IN>
 		checkErroneous();
 	}
 
+	//
 	@Override
 	public void snapshotState(FunctionSnapshotContext context) throws Exception {
 		super.snapshotState(context);
