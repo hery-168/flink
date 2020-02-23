@@ -35,6 +35,7 @@ mvn archetype:generate                                          \
     -DarchetypeGroupId=org.apache.flink                         \
     -DarchetypeArtifactId=flink-walkthrough-table-${TEST_TYPE}  \
     -DarchetypeVersion=${FLINK_VERSION}                         \
+    -DarchetypeCatalog=local                                    \
     -DgroupId=org.apache.flink.walkthrough                      \
     -DartifactId=${ARTIFACT_ID}                                 \
     -Dversion=${ARTIFACT_VERSION}                               \
@@ -47,6 +48,7 @@ mvn clean package -nsu > compile-output.txt
 
 if [[ `grep -c "BUILD FAILURE" compile-output.txt` -eq '1' ]]; then
     echo "Failure: The walk-through did not successfully compile"
+    cat compile-output.txt
     exit 1
 fi
 
