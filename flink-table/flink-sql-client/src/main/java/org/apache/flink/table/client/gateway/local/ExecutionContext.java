@@ -19,7 +19,6 @@
 package org.apache.flink.table.client.gateway.local;
 
 import org.apache.flink.api.common.ExecutionConfig;
-import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.client.ClientUtils;
@@ -34,10 +33,7 @@ import org.apache.flink.client.deployment.ClusterSpecification;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.BatchQueryConfig;
 import org.apache.flink.table.api.EnvironmentSettings;
-import org.apache.flink.table.api.QueryConfig;
-import org.apache.flink.table.api.StreamQueryConfig;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.api.TableEnvironment;
@@ -84,7 +80,6 @@ import org.apache.flink.table.functions.TableFunction;
 import org.apache.flink.table.functions.UserDefinedFunction;
 import org.apache.flink.table.module.Module;
 import org.apache.flink.table.module.ModuleManager;
-import org.apache.flink.table.planner.delegation.ExecutorBase;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.util.FlinkException;
@@ -247,18 +242,6 @@ public class ExecutionContext<ClusterID> {
 		}
 	}
 
-	public QueryConfig getQueryConfig() {
-		if (streamExecEnv != null) {
-			final StreamQueryConfig config = new StreamQueryConfig();
-			final long minRetention = environment.getExecution().getMinStateRetention();
-			final long maxRetention = environment.getExecution().getMaxStateRetention();
-			config.withIdleStateRetentionTime(Time.milliseconds(minRetention), Time.milliseconds(maxRetention));
-			return config;
-		} else {
-			return new BatchQueryConfig();
-		}
-	}
-
 	public TableEnvironment getTableEnvironment() {
 		return tableEnv;
 	}
@@ -272,25 +255,14 @@ public class ExecutionContext<ClusterID> {
 	}
 
 	public Pipeline createPipeline(String name) {
-		if (streamExecEnv != null) {
-			// special case for Blink planner to apply batch optimizations
-			// note: it also modifies the ExecutionConfig!
-			if (isBlinkPlanner(executor.getClass())) {
-				return ((ExecutorBase) executor).getStreamGraph(name);
+		return wrapClassLoader(() -> {
+			if (streamExecEnv != null) {
+				StreamTableEnvironmentImpl streamTableEnv = (StreamTableEnvironmentImpl) tableEnv;
+				return streamTableEnv.getPipeline(name);
+			} else {
+				return execEnv.createProgramPlan(name);
 			}
-			return streamExecEnv.getStreamGraph(name);
-		} else {
-			return execEnv.createProgramPlan(name);
-		}
-	}
-
-	private boolean isBlinkPlanner(Class<? extends Executor> executorClass) {
-		try {
-			return ExecutorBase.class.isAssignableFrom(executorClass);
-		} catch (NoClassDefFoundError ignore) {
-			// blink planner might not be on the class path
-			return false;
-		}
+		});
 	}
 
 	/** Returns a builder for this {@link ExecutionContext}. */
@@ -461,19 +433,20 @@ public class ExecutionContext<ClusterID> {
 	private void initializeTableEnvironment(@Nullable SessionState sessionState) {
 		final EnvironmentSettings settings = environment.getExecution().getEnvironmentSettings();
 		final boolean noInheritedState = sessionState == null;
+		// Step 0.0 Initialize the table configuration.
+		final TableConfig config = new TableConfig();
+		environment.getConfiguration().asMap().forEach((k, v) ->
+				config.getConfiguration().setString(k, v));
+
 		if (noInheritedState) {
 			//--------------------------------------------------------------------------------------------------------------
 			// Step.1 Create environments
 			//--------------------------------------------------------------------------------------------------------------
-			// Step 1.0 Initialize the table configuration.
-			final TableConfig config = new TableConfig();
-			environment.getConfiguration().asMap().forEach((k, v) ->
-					config.getConfiguration().setString(k, v));
 
-			// Step 1.1 Initialize the ModuleManager if required.
+			// Step 1.0 Initialize the ModuleManager if required.
 			final ModuleManager moduleManager = new ModuleManager();
 
-			// Step 1.2 Initialize the CatalogManager if required.
+			// Step 1.1 Initialize the CatalogManager if required.
 			final CatalogManager catalogManager = CatalogManager.newBuilder()
 				.classLoader(classLoader)
 				.config(config.getConfiguration())
@@ -484,11 +457,11 @@ public class ExecutionContext<ClusterID> {
 						settings.getBuiltInDatabaseName()))
 				.build();
 
-			// Step 1.3 Initialize the FunctionCatalog if required.
+			// Step 1.2 Initialize the FunctionCatalog if required.
 			final FunctionCatalog functionCatalog = new FunctionCatalog(config, catalogManager, moduleManager);
 
-			// Step 1.4 Set up session state.
-			this.sessionState = SessionState.of(config, catalogManager, moduleManager, functionCatalog);
+			// Step 1.3 Set up session state.
+			this.sessionState = SessionState.of(catalogManager, moduleManager, functionCatalog);
 
 			// Must initialize the table environment before actually the
 			createTableEnvironment(settings, config, catalogManager, moduleManager, functionCatalog);
@@ -523,7 +496,7 @@ public class ExecutionContext<ClusterID> {
 			this.sessionState = sessionState;
 			createTableEnvironment(
 					settings,
-					sessionState.config,
+					config,
 					sessionState.catalogManager,
 					sessionState.moduleManager,
 					sessionState.functionCatalog);
@@ -783,28 +756,24 @@ public class ExecutionContext<ClusterID> {
 
 	/** Represents the state that should be reused in one session. **/
 	public static class SessionState {
-		public final TableConfig config;
 		public final CatalogManager catalogManager;
 		public final ModuleManager moduleManager;
 		public final FunctionCatalog functionCatalog;
 
 		private SessionState(
-				TableConfig config,
 				CatalogManager catalogManager,
 				ModuleManager moduleManager,
 				FunctionCatalog functionCatalog) {
-			this.config = config;
 			this.catalogManager = catalogManager;
 			this.moduleManager = moduleManager;
 			this.functionCatalog = functionCatalog;
 		}
 
 		public static SessionState of(
-				TableConfig config,
 				CatalogManager catalogManager,
 				ModuleManager moduleManager,
 				FunctionCatalog functionCatalog) {
-			return new SessionState(config, catalogManager, moduleManager, functionCatalog);
+			return new SessionState(catalogManager, moduleManager, functionCatalog);
 		}
 	}
 }

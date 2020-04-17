@@ -38,6 +38,9 @@ start_time=$(date +%s)
 
 # make sure we stop our cluster at the end
 function cluster_shutdown {
+  if [ $TRAPPED_EXIT_CODE != 0 ];then
+      debug_copy_and_show_logs
+  fi
   docker-compose -f $END_TO_END_DIR/test-scripts/docker-hadoop-secure-cluster/docker-compose.yml down
   rm $FLINK_TARBALL_DIR/$FLINK_TARBALL
 }
@@ -129,14 +132,23 @@ END
     docker exec master bash -c "cat /home/hadoop-user/$FLINK_DIRNAME/conf/flink-conf.yaml"
 }
 
-function copy_and_show_logs {
-    mkdir -p $TEST_DATA_DIR/logs
+function debug_copy_and_show_logs {
+    echo "Debugging failed YARN Docker test:"
+    echo "Currently running containers"
+    docker ps
+
+    echo "Currently running JVMs"
+    jps -v
+
     echo "Hadoop logs:"
-    docker cp master:/var/log/hadoop/* $TEST_DATA_DIR/logs/
-    for f in $TEST_DATA_DIR/logs/*; do
+    mkdir -p $TEST_DATA_DIR/logs
+    docker cp master:/var/log/hadoop/ $TEST_DATA_DIR/logs/
+    ls -lisah $TEST_DATA_DIR/logs/hadoop
+    for f in $TEST_DATA_DIR/logs/hadoop/*; do
         echo "$f:"
         cat $f
     done
+    
     echo "Docker logs:"
     docker logs master
 
@@ -144,6 +156,7 @@ function copy_and_show_logs {
     docker exec master bash -c "kinit -kt /home/hadoop-user/hadoop-user.keytab hadoop-user"
     docker exec master bash -c "yarn application -list -appStates ALL"
     application_id=`docker exec master bash -c "yarn application -list -appStates ALL" | grep "Flink" | grep "cluster" | awk '{print \$1}'`
+    
     echo "Application ID: $application_id"
     docker exec master bash -c "yarn logs -applicationId $application_id"
     docker exec master bash -c "kdestroy"

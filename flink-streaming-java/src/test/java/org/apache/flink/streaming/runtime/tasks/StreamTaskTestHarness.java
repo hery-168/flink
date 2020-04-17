@@ -54,6 +54,8 @@ import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.function.FunctionWithException;
+import org.apache.flink.util.function.SupplierWithException;
 
 import org.junit.Assert;
 
@@ -64,8 +66,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
@@ -80,14 +80,17 @@ import static org.apache.flink.util.Preconditions.checkState;
  * <p>After setting up everything the Task can be invoked using {@link #invoke()}. This will start
  * a new Thread to execute the Task. Use {@link #waitForTaskCompletion()} to wait for the Task
  * thread to finish.
+ *
+ * <p>This class id deprecated because of it's threading model. Please use {@link StreamTaskMailboxTestHarness}
  */
+@Deprecated
 public class StreamTaskTestHarness<OUT> {
 
 	public static final int DEFAULT_MEMORY_MANAGER_SIZE = 1024 * 1024;
 
 	public static final int DEFAULT_NETWORK_BUFFER_SIZE = 1024;
 
-	private final Function<Environment, ? extends StreamTask<OUT, ?>> taskFactory;
+	private final FunctionWithException<Environment, ? extends StreamTask<OUT, ?>, Exception> taskFactory;
 
 	public long memorySize;
 	public int bufferSize;
@@ -119,20 +122,20 @@ public class StreamTaskTestHarness<OUT> {
 	protected StreamTestSingleInputGate[] inputGates;
 
 	public StreamTaskTestHarness(
-			Function<Environment, ? extends StreamTask<OUT, ?>> taskFactory,
+			FunctionWithException<Environment, ? extends StreamTask<OUT, ?>, Exception> taskFactory,
 			TypeInformation<OUT> outputType) {
 		this(taskFactory, outputType, TestLocalRecoveryConfig.disabled());
 	}
 
 	public StreamTaskTestHarness(
-		Function<Environment, ? extends StreamTask<OUT, ?>> taskFactory,
+		FunctionWithException<Environment, ? extends StreamTask<OUT, ?>, Exception> taskFactory,
 		TypeInformation<OUT> outputType,
 		File localRootDir) {
 		this(taskFactory, outputType, new LocalRecoveryConfig(true, new LocalRecoveryDirectoryProviderImpl(localRootDir, new JobID(), new JobVertexID(), 0)));
 	}
 
 	public StreamTaskTestHarness(
-		Function<Environment, ? extends StreamTask<OUT, ?>> taskFactory,
+		FunctionWithException<Environment, ? extends StreamTask<OUT, ?>, Exception> taskFactory,
 		TypeInformation<OUT> outputType,
 		LocalRecoveryConfig localRecoveryConfig) {
 		this.taskFactory = checkNotNull(taskFactory);
@@ -422,36 +425,36 @@ public class StreamTaskTestHarness<OUT> {
 		inputGates[gateIndex].sendEvent(EndOfPartitionEvent.INSTANCE, channelIndex);
 	}
 
-	public StreamConfigChainer setupOperatorChain(OperatorID headOperatorId, StreamOperator<?> headOperator) {
+	public StreamConfigChainer<StreamTaskTestHarness<OUT>> setupOperatorChain(OperatorID headOperatorId, StreamOperator<?> headOperator) {
 		return setupOperatorChain(headOperatorId, SimpleOperatorFactory.of(headOperator));
 	}
 
-	public StreamConfigChainer setupOperatorChain(OperatorID headOperatorId, StreamOperatorFactory<?> headOperatorFactory) {
+	public StreamConfigChainer<StreamTaskTestHarness<OUT>> setupOperatorChain(OperatorID headOperatorId, StreamOperatorFactory<?> headOperatorFactory) {
 		Preconditions.checkState(!setupCalled, "This harness was already setup.");
 		setupCalled = true;
 		StreamConfig streamConfig = getStreamConfig();
 		streamConfig.setStreamOperatorFactory(headOperatorFactory);
-		return new StreamConfigChainer(headOperatorId, streamConfig);
+		return new StreamConfigChainer(headOperatorId, streamConfig, this);
 	}
 
 	// ------------------------------------------------------------------------
 
 	private class TaskThread extends Thread {
 
-		private final Supplier<? extends StreamTask<OUT, ?>> taskFactory;
+		private final SupplierWithException<? extends StreamTask<OUT, ?>, Exception> taskFactory;
 		private volatile StreamTask<OUT, ?> task;
 
 		private volatile Throwable error;
 
-		TaskThread(Supplier<? extends StreamTask<OUT, ?>> taskFactory) {
+		TaskThread(SupplierWithException<? extends StreamTask<OUT, ?>, Exception> taskFactory) {
 			super("Task Thread");
 			this.taskFactory = taskFactory;
 		}
 
 		@Override
 		public void run() {
-			task = taskFactory.get();
 			try {
+				task = taskFactory.get();
 				task.invoke();
 				shutdownIOManager();
 				shutdownMemoryManager();
