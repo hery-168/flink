@@ -18,17 +18,17 @@
 
 package org.apache.flink.table.planner.plan.schema
 
-import org.apache.flink.table.api.TableException
+import org.apache.flink.table.api.{TableException, ValidationException}
 import org.apache.flink.table.catalog.CatalogTable
 import org.apache.flink.table.factories.{TableFactoryUtil, TableSourceFactory}
-import org.apache.flink.table.planner.calcite.{FlinkContext, FlinkRelBuilder}
+import org.apache.flink.table.planner.calcite.{FlinkContext, FlinkRelBuilder, FlinkTypeFactory}
 import org.apache.flink.table.planner.catalog.CatalogSchemaTable
 import org.apache.flink.table.sources.{StreamTableSource, TableSource, TableSourceValidation}
-
 import org.apache.calcite.plan.{RelOptSchema, RelOptTable}
 import org.apache.calcite.rel.RelNode
 import org.apache.calcite.rel.`type`.RelDataType
 import org.apache.calcite.rel.logical.LogicalTableScan
+import org.apache.flink.table.types.logical.{TimestampKind, TimestampType}
 
 import java.util
 import java.util.{List => JList}
@@ -68,10 +68,16 @@ class CatalogSourceTable[T](
 
   override def toRel(context: RelOptTable.ToRelContext): RelNode = {
     val cluster = context.getCluster
+
+    val typeFactory = cluster.getTypeFactory.asInstanceOf[FlinkTypeFactory]
+
+    // erase time indicator types in the rowType
+    val erasedRowType = eraseTimeIndicator(rowType, typeFactory)
+
     val tableSourceTable = new TableSourceTable[T](
       relOptSchema,
       schemaTable.getTableIdentifier,
-      rowType,
+      erasedRowType,
       statistic,
       tableSource,
       schemaTable.isStreamingMode,
@@ -98,7 +104,7 @@ class CatalogSourceTable[T](
         .getSqlExprToRexConverterFactory
 
     // 2. push computed column project
-    val fieldNames = rowType.getFieldNames.asScala
+    val fieldNames = erasedRowType.getFieldNames.asScala
     if (columnExprs.nonEmpty) {
       val fieldExprs = fieldNames
           .map { name =>
@@ -131,7 +137,7 @@ class CatalogSourceTable[T](
       }
       val rowtimeIndex = fieldNames.indexOf(rowtime)
       val watermarkRexNode = toRexFactory
-          .create(rowType)
+          .create(erasedRowType)
           .convertToRexNode(watermarkSpec.get.getWatermarkExpr)
       relBuilder.watermark(rowtimeIndex, watermarkRexNode)
     }
@@ -155,10 +161,20 @@ class CatalogSourceTable[T](
     } else {
       TableFactoryUtil.findAndCreateTableSource(catalogTable)
     }
-    if (!tableSource.isInstanceOf[StreamTableSource[_]]) {
-      throw new TableException("Catalog tables support only "
-        + "StreamTableSource and InputFormatTableSource")
+
+    // validation
+    val tableName = schemaTable.getTableIdentifier.asSummaryString();
+    tableSource match {
+      case ts: StreamTableSource[_] =>
+        if (!schemaTable.isStreamingMode && !ts.isBounded) {
+          throw new ValidationException("Cannot query on an unbounded source in batch mode, " +
+            s"but '$tableName' is unbounded.")
+        }
+      case _ =>
+        throw new ValidationException("Catalog tables only support "
+          + "StreamTableSource and InputFormatTableSource")
     }
+
     tableSource
   }
 
@@ -167,5 +183,29 @@ class CatalogSourceTable[T](
     // Add class name to distinguish TableSourceTable.
     ret.add("class: " + classOf[CatalogSourceTable[_]].getSimpleName)
     ret
+  }
+
+  /**
+   * Erases time indicators, i.e. converts rowtime and proctime type into regular timestamp type.
+   * This is required before converting this [[CatalogSourceTable]] into multiple RelNodes,
+   * otherwise the derived data types are mismatch.
+   */
+  private def eraseTimeIndicator(
+      relDataType: RelDataType,
+      factory: FlinkTypeFactory): RelDataType = {
+    val logicalRowType = FlinkTypeFactory.toLogicalRowType(relDataType)
+    val fieldNames = logicalRowType.getFieldNames
+    val fieldTypes = logicalRowType.getFields.map { f =>
+      if (FlinkTypeFactory.isTimeIndicatorType(f.getType)) {
+        val timeIndicatorType = f.getType.asInstanceOf[TimestampType]
+        new TimestampType(
+          timeIndicatorType.isNullable,
+          TimestampKind.REGULAR,
+          timeIndicatorType.getPrecision)
+      } else {
+        f.getType
+      }
+    }
+    factory.buildRelNodeRowType(fieldNames, fieldTypes)
   }
 }

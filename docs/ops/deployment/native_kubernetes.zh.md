@@ -57,12 +57,18 @@ All the Kubernetes configuration options can be found in our [configuration guid
 
 **Example**: Issue the following command to start a session cluster with 4 GB of memory and 2 CPUs with 4 slots per TaskManager:
 
+In this example we override the `resourcemanager.taskmanager-timeout` setting to make
+the pods with task managers remain for a longer period than the default of 30 seconds.
+Although this setting may cause more cloud cost it has the effect that starting new jobs is in some scenarios
+faster and during development you have more time to inspect the logfiles of your job.
+
 {% highlight bash %}
 ./bin/kubernetes-session.sh \
   -Dkubernetes.cluster-id=<ClusterId> \
   -Dtaskmanager.memory.process.size=4096m \
   -Dkubernetes.taskmanager.cpu=2 \
-  -Dtaskmanager.numberOfTaskSlots=4
+  -Dtaskmanager.numberOfTaskSlots=4 \
+  -Dresourcemanager.taskmanager-timeout=3600000
 {% endhighlight %}
 
 The system will use the configuration in `conf/flink-conf.yaml`.
@@ -146,6 +152,32 @@ log4j.appender.console.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p
 {% endhighlight %}
 
 If the pod is running, you can use `kubectl exec -it <PodName> bash` to tunnel in and view the logs or debug the process. 
+
+## Using plugins
+
+As described in the [plugins]({{ site.baseurl }}/zh/ops/plugins.html) documentation page: in order to use plugins they must be
+copied to the correct location in the flink installation for them to work.
+
+The simplest way to enable plugins for use on Kubernetes is to modify the provided official Flink docker images by adding
+an additional layer. This does however assume you have a docker registry available where you can push images to and
+that is accessible by your Kubernetes cluster.
+
+How this can be done is described on the [Docker Setup]({{ site.baseurl }}/zh/ops/deployment/docker.html#using-plugins) page.
+
+With such an image created you can now start your Kubernetes based Flink session cluster with the additional parameter
+`kubernetes.container.image` which must specify the image that was created: `docker.example.nl/flink:{{ site.version }}-2.12-s3`
+
+Extending the above example command to start the session cluster makes it this:
+
+{% highlight bash %}
+./bin/kubernetes-session.sh \
+  -Dkubernetes.cluster-id=<ClusterId> \
+  -Dtaskmanager.memory.process.size=4096m \
+  -Dkubernetes.taskmanager.cpu=2 \
+  -Dtaskmanager.numberOfTaskSlots=4 \
+  -Dresourcemanager.taskmanager-timeout=3600000 \
+  -Dkubernetes.container.image=docker.example.nl/flink:{{ site.version }}-2.12-s3
+{% endhighlight %}
 
 ## Kubernetes concepts
 

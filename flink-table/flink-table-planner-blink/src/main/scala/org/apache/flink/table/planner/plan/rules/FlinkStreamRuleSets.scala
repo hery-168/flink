@@ -109,6 +109,8 @@ object FlinkStreamRuleSets {
       REWRITE_COALESCE_RULES.asScala ++
       REDUCE_EXPRESSION_RULES.asScala ++
       List(
+        //removes constant keys from an Agg
+        AggregateProjectPullUpConstantsRule.INSTANCE,
         StreamLogicalWindowAggregateRule.INSTANCE,
         // slices a project into sections which contain window agg functions
         // and sections which do not.
@@ -347,6 +349,7 @@ object FlinkStreamRuleSets {
     // Rule that splits python ScalarFunctions from java/scala ScalarFunctions.
     PythonCalcSplitRule.SPLIT_CONDITION,
     PythonCalcSplitRule.SPLIT_PROJECT,
+    PythonCalcSplitRule.EXPAND_PROJECT,
     PythonCalcSplitRule.PUSH_CONDITION,
     PythonCalcSplitRule.REWRITE_PROJECT
   )
