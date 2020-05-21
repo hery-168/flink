@@ -38,7 +38,9 @@ import org.apache.flink.core.fs.Path;
 import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
+import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.api.internal.TableEnvironmentInternal;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.client.SqlClientException;
 import org.apache.flink.table.client.config.Environment;
@@ -53,6 +55,7 @@ import org.apache.flink.table.client.gateway.TypedResult;
 import org.apache.flink.table.client.gateway.local.result.ChangelogResult;
 import org.apache.flink.table.client.gateway.local.result.DynamicResult;
 import org.apache.flink.table.client.gateway.local.result.MaterializedResult;
+import org.apache.flink.table.delegation.Parser;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.utils.LogicalTypeUtils;
 import org.apache.flink.table.types.utils.DataTypeUtils;
@@ -76,7 +79,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -237,8 +239,11 @@ public class LocalExecutor implements Executor {
 				// ignore any throwable to keep the clean up running
 			}
 		});
-		// Remove the session's ExecutionContext from contextMap.
-		this.contextMap.remove(sessionId);
+		// Remove the session's ExecutionContext from contextMap and close it.
+		ExecutionContext<?> context = this.contextMap.remove(sessionId);
+		if (context != null) {
+			context.close();
+		}
 	}
 
 	/**
@@ -353,7 +358,7 @@ public class LocalExecutor implements Executor {
 		final ExecutionContext<?> context = getExecutionContext(sessionId);
 		final TableEnvironment tEnv = context.getTableEnvironment();
 		try {
-			context.wrapClassLoader(() -> tEnv.sqlUpdate(ddl));
+			context.wrapClassLoader(() -> tEnv.executeSql(ddl));
 		} catch (Exception e) {
 			throw new SqlExecutionException("Could not create a table from statement: " + ddl, e);
 		}
@@ -364,7 +369,7 @@ public class LocalExecutor implements Executor {
 		final ExecutionContext<?> context = getExecutionContext(sessionId);
 		final TableEnvironment tEnv = context.getTableEnvironment();
 		try {
-			context.wrapClassLoader(() -> tEnv.sqlUpdate(ddl));
+			context.wrapClassLoader(() -> tEnv.executeSql(ddl));
 		} catch (Exception e) {
 			throw new SqlExecutionException("Could not drop table from statement: " + ddl, e);
 		}
@@ -382,6 +387,17 @@ public class LocalExecutor implements Executor {
 		final ExecutionContext<?> context = getExecutionContext(sessionId);
 		final TableEnvironment tableEnv = context.getTableEnvironment();
 		return context.wrapClassLoader(() -> Arrays.asList(tableEnv.listUserDefinedFunctions()));
+	}
+
+	@Override
+	public TableResult executeSql(String sessionId, String statement) throws SqlExecutionException {
+		final ExecutionContext<?> context = getExecutionContext(sessionId);
+		final TableEnvironment tEnv = context.getTableEnvironment();
+		try {
+			return context.wrapClassLoader(() -> tEnv.executeSql(statement));
+		} catch (Exception e) {
+			throw new SqlExecutionException("Could not execute statement: " + statement, e);
+		}
 	}
 
 	@Override
@@ -433,7 +449,7 @@ public class LocalExecutor implements Executor {
 		final ExecutionContext<?> context = getExecutionContext(sessionId);
 		final TableEnvironment tableEnv = context.getTableEnvironment();
 		try {
-			return context.wrapClassLoader(() -> tableEnv.scan(name).getSchema());
+			return context.wrapClassLoader(() -> tableEnv.from(name).getSchema());
 		} catch (Throwable t) {
 			// catch everything such that the query does not crash the executor
 			throw new SqlExecutionException("No table with this name could be found.", t);
@@ -441,17 +457,10 @@ public class LocalExecutor implements Executor {
 	}
 
 	@Override
-	public String explainStatement(String sessionId, String statement) throws SqlExecutionException {
+	public Parser getSqlParser(String sessionId) {
 		final ExecutionContext<?> context = getExecutionContext(sessionId);
 		final TableEnvironment tableEnv = context.getTableEnvironment();
-		// translate
-		try {
-			final Table table = createTable(context, tableEnv, statement);
-			return context.wrapClassLoader(() -> tableEnv.explain(table));
-		} catch (Throwable t) {
-			// catch everything such that the query does not crash the executor
-			throw new SqlExecutionException("Invalid SQL statement.", t);
-		}
+		return ((TableEnvironmentInternal) tableEnv).getParser();
 	}
 
 	@Override
@@ -611,7 +620,7 @@ public class LocalExecutor implements Executor {
 	private <C> ResultDescriptor executeQueryInternal(String sessionId, ExecutionContext<C> context, String query) {
 		// create table
 		final Table table = createTable(context, context.getTableEnvironment(), query);
-
+		// TODO refactor this after Table#execute support all kinds of changes
 		// initialize result
 		final DynamicResult<C> result = resultStore.createResult(
 				context.getEnvironment(),
@@ -624,7 +633,7 @@ public class LocalExecutor implements Executor {
 		try {
 			// writing to a sink requires an optimization step that might reference UDFs during code compilation
 			context.wrapClassLoader(() -> {
-				context.getTableEnvironment().registerTableSink(tableName, result.getTableSink());
+				((TableEnvironmentInternal) context.getTableEnvironment()).registerTableSinkInternal(tableName, result.getTableSink());
 				table.insertInto(tableName);
 			});
 			pipeline = context.createPipeline(jobName);
@@ -641,10 +650,6 @@ public class LocalExecutor implements Executor {
 			});
 		}
 
-		// store the result with a unique id
-		final String resultId = UUID.randomUUID().toString();
-		resultStore.storeResult(resultId, result);
-
 		// create a copy so that we can change settings without affecting the original config
 		Configuration configuration = new Configuration(context.getFlinkConfig());
 		// for queries we wait for the job result, so run in attached mode
@@ -656,11 +661,23 @@ public class LocalExecutor implements Executor {
 		final ProgramDeployer deployer = new ProgramDeployer(
 				configuration, jobName, pipeline);
 
+		JobClient jobClient;
+		// blocking deployment
+		try {
+			jobClient = deployer.deploy().get();
+		} catch (Exception e) {
+			throw new SqlExecutionException("Error while submitting job.", e);
+		}
+
+		String jobId = jobClient.getJobID().toString();
+		// store the result under the JobID
+		resultStore.storeResult(jobId, result);
+
 		// start result retrieval
-		result.startRetrieval(deployer);
+		result.startRetrieval(jobClient);
 
 		return new ResultDescriptor(
-				resultId,
+				jobId,
 				removeTimeAttributes(table.getSchema()),
 				result.isMaterialized(),
 				context.getEnvironment().getExecution().isTableauMode());
@@ -685,6 +702,9 @@ public class LocalExecutor implements Executor {
 	private <C> void applyUpdate(ExecutionContext<C> context, String updateStatement) {
 		final TableEnvironment tableEnv = context.getTableEnvironment();
 		try {
+			// TODO replace sqlUpdate with executeSql
+			// This needs we do more refactor, because we can't set the flinkConfig in ExecutionContext
+			// into StreamExecutionEnvironment
 			context.wrapClassLoader(() -> tableEnv.sqlUpdate(updateStatement));
 		} catch (Throwable t) {
 			// catch everything such that the statement does not crash the executor

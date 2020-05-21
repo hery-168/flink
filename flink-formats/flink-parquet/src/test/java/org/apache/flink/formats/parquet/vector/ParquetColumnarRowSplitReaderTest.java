@@ -19,9 +19,9 @@
 package org.apache.flink.formats.parquet.vector;
 
 import org.apache.flink.core.fs.Path;
-import org.apache.flink.table.dataformat.ColumnarRow;
-import org.apache.flink.table.dataformat.Decimal;
-import org.apache.flink.table.dataformat.vector.VectorizedColumnBatch;
+import org.apache.flink.table.data.ColumnarRowData;
+import org.apache.flink.table.data.DecimalData;
+import org.apache.flink.table.data.vector.VectorizedColumnBatch;
 import org.apache.flink.table.runtime.functions.SqlDateTimeUtils;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.BigIntType;
@@ -168,14 +168,20 @@ public class ParquetColumnarRowSplitReaderTest {
 
 		// test reading and splitting
 		long fileLen = testPath.getFileSystem().getFileStatus(testPath).getLen();
-		int len1 = readSplitAndCheck(0, testPath, 0, fileLen / 3, values);
-		int len2 = readSplitAndCheck(len1, testPath, fileLen / 3, fileLen * 2 / 3, values);
-		int len3 = readSplitAndCheck(len1 + len2, testPath, fileLen * 2 / 3, Long.MAX_VALUE, values);
+		int len1 = readSplitAndCheck(0, 0, testPath, 0, fileLen / 3, values);
+		int len2 = readSplitAndCheck(len1, 0, testPath, fileLen / 3, fileLen * 2 / 3, values);
+		int len3 = readSplitAndCheck(len1 + len2, 0, testPath, fileLen * 2 / 3, Long.MAX_VALUE, values);
 		assertEquals(number, len1 + len2 + len3);
+
+		// test seek
+		assertEquals(
+				number - number / 2,
+				readSplitAndCheck(number / 2, number / 2, testPath, 0, fileLen, values));
 	}
 
 	private int readSplitAndCheck(
 			int start,
+			long seekToRow,
 			Path testPath,
 			long splitStart,
 			long splitLength,
@@ -209,10 +215,11 @@ public class ParquetColumnarRowSplitReaderTest {
 				new org.apache.hadoop.fs.Path(testPath.getPath()),
 				splitStart,
 				splitLength);
+		reader.seekToRow(seekToRow);
 
 		int i = start;
 		while (!reader.reachedEnd()) {
-			ColumnarRow row = reader.nextRecord();
+			ColumnarRowData row = reader.nextRecord();
 			Integer v = values.get(i);
 			if (v == null) {
 				assertTrue(row.isNullAt(0));
@@ -405,7 +412,7 @@ public class ParquetColumnarRowSplitReaderTest {
 				Long.MAX_VALUE);
 		int i = 0;
 		while (!reader.reachedEnd()) {
-			ColumnarRow row = reader.nextRecord();
+			ColumnarRowData row = reader.nextRecord();
 			assertEquals(i, row.getDouble(0), 0);
 			assertEquals((byte) i, row.getByte(1));
 			assertEquals(i, row.getInt(2));
@@ -500,7 +507,7 @@ public class ParquetColumnarRowSplitReaderTest {
 				Long.MAX_VALUE);
 		int i = 0;
 		while (!reader.reachedEnd()) {
-			ColumnarRow row = reader.nextRecord();
+			ColumnarRowData row = reader.nextRecord();
 
 			// common values
 			assertEquals(i, row.getDouble(0), 0);
@@ -527,13 +534,13 @@ public class ParquetColumnarRowSplitReaderTest {
 						LocalDateTime.of(1999, 1, 1, 1, 1),
 						row.getTimestamp(11, 9).toLocalDateTime());
 				assertEquals(
-						Decimal.fromBigDecimal(new BigDecimal(24), 5, 0),
+						DecimalData.fromBigDecimal(new BigDecimal(24), 5, 0),
 						row.getDecimal(12, 5, 0));
 				assertEquals(
-						Decimal.fromBigDecimal(new BigDecimal(25), 15, 0),
+						DecimalData.fromBigDecimal(new BigDecimal(25), 15, 0),
 						row.getDecimal(13, 15, 0));
 				assertEquals(
-						Decimal.fromBigDecimal(new BigDecimal(26), 20, 0),
+						DecimalData.fromBigDecimal(new BigDecimal(26), 20, 0),
 						row.getDecimal(14, 20, 0));
 				assertEquals("f27", row.getString(15).toString());
 			}

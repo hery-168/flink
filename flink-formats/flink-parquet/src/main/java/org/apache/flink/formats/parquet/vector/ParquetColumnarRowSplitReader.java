@@ -20,10 +20,10 @@ package org.apache.flink.formats.parquet.vector;
 
 import org.apache.flink.formats.parquet.vector.reader.AbstractColumnReader;
 import org.apache.flink.formats.parquet.vector.reader.ColumnReader;
-import org.apache.flink.table.dataformat.ColumnarRow;
-import org.apache.flink.table.dataformat.vector.ColumnVector;
-import org.apache.flink.table.dataformat.vector.VectorizedColumnBatch;
-import org.apache.flink.table.dataformat.vector.writable.WritableColumnVector;
+import org.apache.flink.table.data.ColumnarRowData;
+import org.apache.flink.table.data.vector.ColumnVector;
+import org.apache.flink.table.data.vector.VectorizedColumnBatch;
+import org.apache.flink.table.data.vector.writable.WritableColumnVector;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 
@@ -73,7 +73,7 @@ public class ParquetColumnarRowSplitReader implements Closeable {
 
 	private final VectorizedColumnBatch columnarBatch;
 
-	private final ColumnarRow row;
+	private final ColumnarRowData row;
 
 	private final LogicalType[] selectedTypes;
 
@@ -140,7 +140,7 @@ public class ParquetColumnarRowSplitReader implements Closeable {
 
 		this.writableVectors = createWritableVectors();
 		this.columnarBatch = generator.generate(createReadableVectors());
-		this.row = new ColumnarRow(columnarBatch);
+		this.row = new ColumnarRowData(columnarBatch);
 	}
 
 	/**
@@ -222,7 +222,7 @@ public class ParquetColumnarRowSplitReader implements Closeable {
 		return !ensureBatch();
 	}
 
-	public ColumnarRow nextRecord() {
+	public ColumnarRowData nextRecord() {
 		// return the next row
 		row.setRowId(this.nextRow++);
 		return row;
@@ -288,6 +288,37 @@ public class ParquetColumnarRowSplitReader implements Closeable {
 					pages.getPageReader(columns.get(i)));
 		}
 		totalCountLoadedSoFar += pages.getRowCount();
+	}
+
+	/**
+	 * Seek to a particular row number.
+	 */
+	public void seekToRow(long rowCount) throws IOException {
+		if (totalCountLoadedSoFar != 0) {
+			throw new UnsupportedOperationException("Only support seek at first.");
+		}
+
+		List<BlockMetaData> blockMetaData = reader.getRowGroups();
+
+		for (BlockMetaData metaData : blockMetaData) {
+			if (metaData.getRowCount() > rowCount) {
+				break;
+			} else {
+				reader.skipNextRowGroup();
+				rowsReturned += metaData.getRowCount();
+				totalCountLoadedSoFar += metaData.getRowCount();
+				rowsInBatch = (int) metaData.getRowCount();
+				nextRow = (int) metaData.getRowCount();
+				rowCount -= metaData.getRowCount();
+			}
+		}
+		for (int i = 0; i < rowCount; i++) {
+			boolean end = reachedEnd();
+			if (end) {
+				throw new RuntimeException("Seek to many rows.");
+			}
+			nextRecord();
+		}
 	}
 
 	@Override
