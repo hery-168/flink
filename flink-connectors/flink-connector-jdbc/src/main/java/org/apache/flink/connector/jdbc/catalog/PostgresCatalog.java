@@ -49,13 +49,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableSourceSinkFactory.IDENTIFIER;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableSourceSinkFactory.PASSWORD;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableSourceSinkFactory.TABLE_NAME;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableSourceSinkFactory.URL;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableSourceSinkFactory.USERNAME;
+import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
+import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.PASSWORD;
+import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.TABLE_NAME;
+import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.URL;
+import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.USERNAME;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 
 /**
@@ -183,7 +184,10 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 		String dbUrl = baseUrl + tablePath.getDatabaseName();
 		try (Connection conn = DriverManager.getConnection(dbUrl, username, pwd)) {
 			DatabaseMetaData metaData = conn.getMetaData();
-			UniqueConstraint pk = getPrimaryKey(metaData, pgPath.getPgSchemaName(), pgPath.getPgTableName());
+			Optional<UniqueConstraint> primaryKey = getPrimaryKey(
+				metaData,
+				pgPath.getPgSchemaName(),
+				pgPath.getPgTableName());
 
 			PreparedStatement ps = conn.prepareStatement(
 				String.format("SELECT * FROM %s;", pgPath.getFullPath()));
@@ -203,9 +207,9 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 
 			TableSchema.Builder tableBuilder = new TableSchema.Builder()
 				.fields(names, types);
-			if (pk != null) {
-				tableBuilder.primaryKey(pk.getName(), pk.getColumns().toArray(new String[0]));
-			}
+			primaryKey.ifPresent(pk ->
+				tableBuilder.primaryKey(pk.getName(), pk.getColumns().toArray(new String[0]))
+			);
 			TableSchema tableSchema = tableBuilder.build();
 
 			Map<String, String> props = new HashMap<>();
@@ -227,6 +231,10 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 	}
 
 	// Postgres jdbc driver maps several alias to real type, we use real type rather than alias:
+	// serial2 <=> int2
+	// smallserial <=> int2
+	// serial4 <=> serial
+	// serial8 <=> bigserial
 	// smallint <=> int2
 	// integer <=> int4
 	// int <=> int4
@@ -234,6 +242,8 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 	// float <=> float8
 	// boolean <=> bool
 	// decimal <=> numeric
+	public static final String PG_SERIAL = "serial";
+	public static final String PG_BIGSERIAL = "bigserial";
 	public static final String PG_BYTEA = "bytea";
 	public static final String PG_BYTEA_ARRAY = "_bytea";
 	public static final String PG_SMALLINT = "int2";
@@ -278,8 +288,6 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 		int precision = metadata.getPrecision(colIndex);
 		int scale = metadata.getScale(colIndex);
 
-		// pg types that gets replaced by jdbc driver:
-	    // - decimal => numeric
 		switch (pgType) {
 			case PG_BOOLEAN:
 				return DataTypes.BOOLEAN();
@@ -294,10 +302,12 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 			case PG_SMALLINT_ARRAY:
 				return DataTypes.ARRAY(DataTypes.SMALLINT());
 			case PG_INTEGER:
+			case PG_SERIAL:
 				return DataTypes.INT();
 			case PG_INTEGER_ARRAY:
 				return DataTypes.ARRAY(DataTypes.INT());
 			case PG_BIGINT:
+			case PG_BIGSERIAL:
 				return DataTypes.BIGINT();
 			case PG_BIGINT_ARRAY:
 				return DataTypes.ARRAY(DataTypes.BIGINT());

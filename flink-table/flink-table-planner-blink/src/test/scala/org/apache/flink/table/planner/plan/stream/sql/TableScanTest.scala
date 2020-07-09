@@ -155,7 +155,7 @@ class TableScanTest extends TableTestBase {
   }
 
   @Test
-  def testScanOnChangelogSource(): Unit = {
+  def testFilterOnChangelogSource(): Unit = {
     util.addTable(
       """
         |CREATE TABLE src (
@@ -168,6 +168,58 @@ class TableScanTest extends TableTestBase {
         |)
       """.stripMargin)
     util.verifyPlan("SELECT * FROM src WHERE a > 1", ExplainDetail.CHANGELOG_MODE)
+  }
+
+  @Test
+  def testScanOnChangelogSource(): Unit = {
+    util.addTable(
+      """
+        |CREATE TABLE src (
+        |  ts TIMESTAMP(3),
+        |  a INT,
+        |  b DOUBLE
+        |) WITH (
+        |  'connector' = 'values',
+        |  'changelog-mode' = 'I,UA,UB,D'
+        |)
+      """.stripMargin)
+    util.verifyPlan("SELECT b,a,ts FROM src", ExplainDetail.CHANGELOG_MODE)
+  }
+
+  @Test
+  def testUnionChangelogSourceAndAggregation(): Unit = {
+    util.addTable(
+      """
+        |CREATE TABLE changelog_src (
+        |  ts TIMESTAMP(3),
+        |  a INT,
+        |  b DOUBLE
+        |) WITH (
+        |  'connector' = 'values',
+        |  'changelog-mode' = 'I,UA,UB,D'
+        |)
+      """.stripMargin)
+    util.addTable(
+      """
+        |CREATE TABLE append_src (
+        |  ts TIMESTAMP(3),
+        |  a INT,
+        |  b DOUBLE
+        |) WITH (
+        |  'connector' = 'values',
+        |  'changelog-mode' = 'I'
+        |)
+      """.stripMargin)
+
+    val query = """
+      |SELECT b, ts, a
+      |FROM (
+      |  SELECT * FROM changelog_src
+      |  UNION ALL
+      |  SELECT MAX(ts) as t, a, MAX(b) as b FROM append_src GROUP BY a
+      |)
+      |""".stripMargin
+    util.verifyPlan(query, ExplainDetail.CHANGELOG_MODE)
   }
 
   @Test
@@ -184,6 +236,64 @@ class TableScanTest extends TableTestBase {
         |)
       """.stripMargin)
     util.verifyPlan("SELECT COUNT(*) FROM src WHERE a > 1", ExplainDetail.CHANGELOG_MODE)
+  }
+
+  @Test
+  def testJoinOnChangelogSource(): Unit = {
+    util.addTable(
+      """
+         |CREATE TABLE orders (
+         |  amount BIGINT,
+         |  currency STRING
+         |) WITH (
+         | 'connector' = 'values',
+         | 'changelog-mode' = 'I'
+         |)
+         |""".stripMargin)
+    util.addTable(
+      """
+         |CREATE TABLE rates_history (
+         |  currency STRING,
+         |  rate BIGINT
+         |) WITH (
+         |  'connector' = 'values',
+         |  'changelog-mode' = 'I,UB,UA'
+         |)
+      """.stripMargin)
+
+    val sql =
+      """
+        |SELECT o.currency, o.amount, r.rate, o.amount * r.rate
+        |FROM orders AS o JOIN rates_history AS r
+        |ON o.currency = r.currency
+        |""".stripMargin
+    util.verifyPlan(sql, ExplainDetail.CHANGELOG_MODE)
+  }
+
+  @Test
+  def testUnsupportedWindowAggregateOnChangelogSource(): Unit = {
+    util.addTable(
+      """
+        |CREATE TABLE src (
+        |  ts AS PROCTIME(),
+        |  a INT,
+        |  b DOUBLE
+        |) WITH (
+        |  'connector' = 'values',
+        |  'changelog-mode' = 'I,UA,UB'
+        |)
+      """.stripMargin)
+    val query =
+      """
+        |SELECT TUMBLE_START(ts, INTERVAL '10' SECOND), COUNT(*)
+        |FROM src
+        |GROUP BY TUMBLE(ts, INTERVAL '10' SECOND)
+        |""".stripMargin
+    thrown.expect(classOf[TableException])
+    thrown.expectMessage(
+      "GroupWindowAggregate doesn't support consuming update changes " +
+        "which is produced by node TableSourceScan")
+    util.verifyPlan(query, ExplainDetail.CHANGELOG_MODE)
   }
 
   @Test
