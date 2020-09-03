@@ -74,8 +74,6 @@ import org.apache.flink.table.catalog.FunctionLanguage;
 import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.catalog.UnresolvedIdentifier;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
-import org.apache.flink.table.factories.CatalogFactory;
-import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.operations.CatalogSinkModifyOperation;
 import org.apache.flink.table.operations.DescribeTableOperation;
 import org.apache.flink.table.operations.ExplainOperation;
@@ -112,6 +110,7 @@ import org.apache.flink.table.operations.ddl.DropTempSystemFunctionOperation;
 import org.apache.flink.table.operations.ddl.DropViewOperation;
 import org.apache.flink.table.planner.calcite.FlinkPlannerImpl;
 import org.apache.flink.table.planner.hint.FlinkHints;
+import org.apache.flink.table.planner.utils.Expander;
 import org.apache.flink.table.planner.utils.OperationConverterUtils;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.utils.TableSchemaUtils;
@@ -134,6 +133,7 @@ import org.apache.calcite.sql.parser.SqlParser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -288,15 +288,12 @@ public class SqlToOperationConverter {
 			SqlAlterViewAs alterViewAs = (SqlAlterViewAs) alterView;
 			final SqlNode newQuery = alterViewAs.getNewQuery();
 
-			SqlNode validateQuery = flinkPlanner.validate(newQuery);
-			PlannerQueryOperation operation = toQueryOperation(flinkPlanner, validateQuery);
-			TableSchema schema = operation.getTableSchema();
-
-			String originalQuery = getQuotedSqlString(newQuery);
-			String expandedQuery = getQuotedSqlString(validateQuery);
 			CatalogView oldView = (CatalogView) baseTable;
-			CatalogView newView = new CatalogViewImpl(originalQuery, expandedQuery, schema,
-					oldView.getOptions(), oldView.getComment());
+			CatalogView newView = convertViewQuery(
+					newQuery,
+					Collections.emptyList(),
+					oldView.getOptions(),
+					oldView.getComment());
 			return new AlterViewAsOperation(viewIdentifier, newView);
 		} else {
 			throw new ValidationException(
@@ -553,11 +550,7 @@ public class SqlToOperationConverter {
 		sqlCreateCatalog.getPropertyList().getList().forEach(p ->
 			properties.put(((SqlTableOption) p).getKeyString(), ((SqlTableOption) p).getValueString()));
 
-		final CatalogFactory factory =
-			TableFactoryService.find(CatalogFactory.class, properties, this.getClass().getClassLoader());
-
-		Catalog catalog = factory.createCatalog(catalogName, properties);
-		return new CreateCatalogOperation(catalogName, catalog);
+		return new CreateCatalogOperation(catalogName, properties);
 	}
 
 	/** Convert DROP CATALOG statement. */
@@ -664,16 +657,51 @@ public class SqlToOperationConverter {
 		final SqlNode query = sqlCreateView.getQuery();
 		final SqlNodeList fieldList = sqlCreateView.getFieldList();
 
+		UnresolvedIdentifier unresolvedIdentifier = UnresolvedIdentifier.of(sqlCreateView.fullViewName());
+		ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
+
+		String comment = sqlCreateView.getComment()
+				.map(c -> c.getNlsString().getValue()).orElse(null);
+		CatalogView catalogView = convertViewQuery(
+				query,
+				fieldList.getList(),
+				OperationConverterUtils.extractProperties(sqlCreateView.getProperties()
+						.orElse(null)),
+				comment);
+		return new CreateViewOperation(
+				identifier,
+				catalogView,
+				sqlCreateView.isIfNotExists(),
+				sqlCreateView.isTemporary());
+	}
+
+	/** Convert the query part of a VIEW statement. */
+	private CatalogView convertViewQuery(SqlNode query, List<SqlNode> fieldNames,
+			Map<String, String> props, String comment) {
+		// Put the sql string unparse (getQuotedSqlString()) in front of
+		// the node conversion (toQueryOperation()),
+		// because before Calcite 1.22.0, during sql-to-rel conversion, the SqlWindow
+		// bounds state would be mutated as default when they are null (not specified).
+
+		// This bug is fixed in CALCITE-3877 of Calcite 1.23.0.
+		String originalQuery = getQuotedSqlString(query);
 		SqlNode validateQuery = flinkPlanner.validate(query);
+		// The LATERAL operator was eliminated during sql validation, thus the unparsed SQL
+		// does not contain LATERAL which is problematic,
+		// the issue was resolved in CALCITE-4077
+		// (always treat the table function as implicitly LATERAL).
+		String expandedQuery = Expander.create(flinkPlanner)
+				.expanded(originalQuery).substitute(this::getQuotedSqlString);
+
 		PlannerQueryOperation operation = toQueryOperation(flinkPlanner, validateQuery);
 		TableSchema schema = operation.getTableSchema();
 
 		// the view column list in CREATE VIEW is optional, if it's not empty, we should update
 		// the column name with the names in view column list.
-		if (!fieldList.getList().isEmpty()) {
+		if (!fieldNames.isEmpty()) {
 			// alias column names:
 			String[] inputFieldNames = schema.getFieldNames();
-			String[] aliasFieldNames = fieldList.getList().stream()
+			String[] aliasFieldNames = fieldNames.stream()
 					.map(SqlNode::toString)
 					.toArray(String[]::new);
 
@@ -687,23 +715,11 @@ public class SqlToOperationConverter {
 			schema = TableSchema.builder().fields(aliasFieldNames, inputFieldTypes).build();
 		}
 
-		String originalQuery = getQuotedSqlString(query);
-		String expandedQuery = getQuotedSqlString(validateQuery);
-		String comment = sqlCreateView.getComment().map(c -> c.getNlsString().getValue()).orElse(null);
-		CatalogView catalogView = new CatalogViewImpl(originalQuery,
+		return new CatalogViewImpl(originalQuery,
 				expandedQuery,
 				schema,
-				OperationConverterUtils.extractProperties(sqlCreateView.getProperties().orElse(null)),
+				props,
 				comment);
-
-		UnresolvedIdentifier unresolvedIdentifier = UnresolvedIdentifier.of(sqlCreateView.fullViewName());
-		ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
-
-		return new CreateViewOperation(
-				identifier,
-				catalogView,
-				sqlCreateView.isIfNotExists(),
-				sqlCreateView.isTemporary());
 	}
 
 	/** Convert DROP VIEW statement. */

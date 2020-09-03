@@ -147,7 +147,8 @@ public class HiveCatalog extends AbstractCatalog {
 	private final String hiveVersion;
 	private final HiveShim hiveShim;
 
-	private HiveMetastoreClientWrapper client;
+	@VisibleForTesting
+	HiveMetastoreClientWrapper client;
 
 	public HiveCatalog(String catalogName, @Nullable String defaultDatabase, @Nullable String hiveConfDir) {
 		this(catalogName, defaultDatabase, hiveConfDir, HiveShimLoader.getHiveVersion());
@@ -614,8 +615,10 @@ public class HiveCatalog extends AbstractCatalog {
 			DescriptorProperties tableSchemaProps = new DescriptorProperties(true);
 			tableSchemaProps.putProperties(properties);
 			ObjectPath tablePath = new ObjectPath(hiveTable.getDbName(), hiveTable.getTableName());
+			// try to get table schema with both new and old (1.10) key, in order to support tables created in old version
 			tableSchema = tableSchemaProps.getOptionalTableSchema(Schema.SCHEMA)
-					.orElseThrow(() -> new CatalogException("Failed to get table schema from properties for generic table " + tablePath));
+					.orElseGet(() -> tableSchemaProps.getOptionalTableSchema("generic.table.schema")
+							.orElseThrow(() -> new CatalogException("Failed to get table schema from properties for generic table " + tablePath)));
 			partitionKeys = tableSchemaProps.getPartitionKeys();
 			// remove the schema from properties
 			properties = CatalogTableImpl.removeRedundant(properties, tableSchema, partitionKeys);
@@ -769,6 +772,7 @@ public class HiveCatalog extends AbstractCatalog {
 		Table hiveTable = getHiveTable(tablePath);
 
 		ensurePartitionedTable(tablePath, hiveTable);
+		checkValidPartitionSpec(partitionSpec, getFieldNames(hiveTable.getPartitionKeys()), tablePath);
 
 		try {
 			// partition spec can be partial
@@ -991,6 +995,24 @@ public class HiveCatalog extends AbstractCatalog {
 		}
 
 		return values;
+	}
+
+	/**
+	 * Check whether a list of partition values are valid based on the given list of partition keys.
+	 *
+	 * @param partitionSpec a partition spec.
+	 * @param partitionKeys a list of partition keys.
+	 * @param tablePath path of the table to which the partition belongs.
+	 */
+	private void checkValidPartitionSpec(
+			CatalogPartitionSpec partitionSpec, List<String> partitionKeys, ObjectPath tablePath) {
+		for (String key : partitionSpec.getPartitionSpec().keySet()) {
+			if (!partitionKeys.contains(key)) {
+				// Wrap CatalogException for version Compatibility.
+				throw new CatalogException(
+						new PartitionSpecInvalidException(getName(), partitionKeys, tablePath, partitionSpec));
+			}
+		}
 	}
 
 	private Partition getHivePartition(ObjectPath tablePath, CatalogPartitionSpec partitionSpec)

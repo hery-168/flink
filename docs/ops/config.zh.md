@@ -310,7 +310,7 @@ Advanced options to tune RocksDB and RocksDB checkpoints.
 **RocksDB Configurable Options**
 
 These options give fine-grained control over the behavior and resoures of ColumnFamilies.
-With the introduction of `state.backend.rocksdb.memory.managed` and `state.backend.rocksdb.memory.fixed-per-slot` (Apache Flink 1.10), it should be only necessary to use the options here for advanced performance tuning. These options here can also be specified in the application program via `RocksDBStateBackend.setOptions(PptionsFactory)`.
+With the introduction of `state.backend.rocksdb.memory.managed` and `state.backend.rocksdb.memory.fixed-per-slot` (Apache Flink 1.10), it should be only necessary to use the options here for advanced performance tuning. These options here can also be specified in the application program via `RocksDBStateBackend.setRocksDBOptions(RocksDBOptionsFactory)`.
 
 {% include generated/rocks_db_configurable_configuration.html %}
 
@@ -319,6 +319,10 @@ With the introduction of `state.backend.rocksdb.memory.managed` and `state.backe
 *These parameters can help with problems related to failover and to components erroneously considering each other as failed.*
 
 {% include generated/expert_fault_tolerance_section.html %}
+
+### Advanced Cluster Options
+
+{% include generated/expert_cluster_section.html %}
 
 ### Advanced Scheduling Options
 
