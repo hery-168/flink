@@ -47,6 +47,7 @@ public class EnvironmentInformation {
 
 	/**
 	 * Returns the version of the code as String.
+	 *
 	 * @return The project version string.
 	 */
 	public static String getVersion() {
@@ -55,6 +56,7 @@ public class EnvironmentInformation {
 
 	/**
 	 * Returns the version of the used Scala compiler as String.
+	 *
 	 * @return The scala version string.
 	 */
 	public static String getScalaVersion() {
@@ -162,7 +164,7 @@ public class EnvironmentInformation {
 						gitCommitTime = gitDateTimeFormatter.parse(propGitCommitTime, Instant::from);
 						gitCommitTimeStr = berlinDateTime.format(gitCommitTime);
 
-						String propGitBuildTime  = getProperty(properties, "git.build.time", DEFAULT_TIME_STRING);
+						String propGitBuildTime = getProperty(properties, "git.build.time", DEFAULT_TIME_STRING);
 						gitBuildTime = gitDateTimeFormatter.parse(propGitBuildTime, Instant::from);
 						gitBuildTimeStr = berlinDateTime.format(gitBuildTime);
 					} catch (DateTimeParseException dtpe) {
@@ -186,7 +188,7 @@ public class EnvironmentInformation {
 
 	/**
 	 * Gets the name of the user that is running the JVM.
-	 * 
+	 *
 	 * @return The name of the user that is running the JVM.
 	 */
 	public static String getHadoopUser() {
@@ -200,29 +202,26 @@ public class EnvironmentInformation {
 			Method shortUserNameMethod = ugiClass.getMethod("getShortUserName");
 			Object ugi = currentUserMethod.invoke(null);
 			return (String) shortUserNameMethod.invoke(ugi);
-		}
-		catch (ClassNotFoundException e) {
+		} catch (ClassNotFoundException e) {
 			return "<no hadoop dependency found>";
-		}
-		catch (LinkageError e) {
+		} catch (LinkageError e) {
 			// hadoop classes are not in the classpath
 			LOG.debug("Cannot determine user/group information using Hadoop utils. " +
-					"Hadoop classes not loaded or compatible", e);
-		}
-		catch (Throwable t) {
+				"Hadoop classes not loaded or compatible", e);
+		} catch (Throwable t) {
 			// some other error occurred that we should log and make known
 			LOG.warn("Error while accessing user/group information via Hadoop utils.", t);
 		}
-		
+
 		return UNKNOWN;
 	}
 
 	/**
 	 * The maximum JVM heap size, in bytes.
-	 * 
+	 *
 	 * <p>This method uses the <i>-Xmx</i> value of the JVM, if set. If not set, it returns (as
 	 * a heuristic) 1/4th of the physical memory size.
-	 * 
+	 *
 	 * @return The maximum JVM heap size, in bytes.
 	 */
 	public static long getMaxJvmHeapMemory() {
@@ -238,32 +237,32 @@ public class EnvironmentInformation {
 				return physicalMemory / 4;
 			} else {
 				throw new RuntimeException("Could not determine the amount of free memory.\n" +
-						"Please set the maximum memory for the JVM, e.g. -Xmx512M for 512 megabytes.");
+					"Please set the maximum memory for the JVM, e.g. -Xmx512M for 512 megabytes.");
 			}
 		}
 	}
 
 	/**
 	 * Gets an estimate of the size of the free heap memory.
-	 * 
+	 * <p>
 	 * NOTE: This method is heavy-weight. It triggers a garbage collection to reduce fragmentation and get
 	 * a better estimate at the size of free memory. It is typically more accurate than the plain version
 	 * {@link #getSizeOfFreeHeapMemory()}.
-	 * 
+	 *
 	 * @return An estimate of the size of the free heap memory, in bytes.
 	 */
 	public static long getSizeOfFreeHeapMemoryWithDefrag() {
 		// trigger a garbage collection, to reduce fragmentation
 		System.gc();
-		
+
 		return getSizeOfFreeHeapMemory();
 	}
-	
+
 	/**
 	 * Gets an estimate of the size of the free heap memory. The estimate may vary, depending on the current
 	 * level of memory fragmentation and the number of dead objects. For a better (but more heavy-weight)
 	 * estimate, use {@link #getSizeOfFreeHeapMemoryWithDefrag()}.
-	 * 
+	 *
 	 * @return An estimate of the size of the free heap memory, in bytes.
 	 */
 	public static long getSizeOfFreeHeapMemory() {
@@ -280,8 +279,7 @@ public class EnvironmentInformation {
 		try {
 			final RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 			return bean.getVmName() + " - " + bean.getVmVendor() + " - " + bean.getSpecVersion() + '/' + bean.getVmVersion();
-		}
-		catch (Throwable t) {
+		} catch (Throwable t) {
 			return UNKNOWN;
 		}
 	}
@@ -295,14 +293,13 @@ public class EnvironmentInformation {
 		try {
 			final RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 			final StringBuilder bld = new StringBuilder();
-			
+
 			for (String s : bean.getInputArguments()) {
 				bld.append(s).append(' ');
 			}
 
 			return bld.toString();
-		}
-		catch (Throwable t) {
+		} catch (Throwable t) {
 			return UNKNOWN;
 		}
 	}
@@ -317,8 +314,7 @@ public class EnvironmentInformation {
 			RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 			List<String> options = bean.getInputArguments();
 			return options.toArray(new String[options.size()]);
-		}
-		catch (Throwable t) {
+		} catch (Throwable t) {
 			return new String[0];
 		}
 	}
@@ -335,9 +331,9 @@ public class EnvironmentInformation {
 	/**
 	 * Tries to retrieve the maximum number of open file handles. This method will only work on
 	 * UNIX-based operating systems with Sun/Oracle Java versions.
-	 * 
+	 *
 	 * <p>If the number of max open file handles cannot be determined, this method returns {@code -1}.</p>
-	 * 
+	 *
 	 * @return The limit of open file handles, or {@code -1}, if the limit could not be determined.
 	 */
 	public static long getOpenFileHandlesLimit() {
@@ -347,43 +343,46 @@ public class EnvironmentInformation {
 		Class<?> sunBeanClass;
 		try {
 			sunBeanClass = Class.forName("com.sun.management.UnixOperatingSystemMXBean");
-		}
-		catch (ClassNotFoundException e) {
+		} catch (ClassNotFoundException e) {
 			return -1L;
 		}
-		
+
 		try {
 			Method fhLimitMethod = sunBeanClass.getMethod("getMaxFileDescriptorCount");
 			Object result = fhLimitMethod.invoke(ManagementFactory.getOperatingSystemMXBean());
 			return (Long) result;
-		}
-		catch (Throwable t) {
+		} catch (Throwable t) {
 			LOG.warn("Unexpected error when accessing file handle limit", t);
 			return -1L;
 		}
 	}
-	
+
 	/**
 	 * Logs information about the environment, like code revision, current user, Java version,
 	 * and JVM parameters.
 	 *
-	 * @param log The logger to log the information to.
-	 * @param componentName The component name to mention in the log.
+	 * @param log             The logger to log the information to.
+	 * @param componentName   The component name to mention in the log.
 	 * @param commandLineArgs The arguments accompanying the starting the component.
 	 */
 	public static void logEnvironmentInfo(Logger log, String componentName, String[] commandLineArgs) {
+		//判断info级别是否开启
 		if (log.isInfoEnabled()) {
+			// 1. 获取代码git的最终提交id和日期
 			RevisionInformation rev = getRevisionInformation();
+			// 获取flink 版本
 			String version = getVersion();
+			// 获取scala 版本
 			String scalaVersion = getScalaVersion();
-
+			// 获取jvm 版本 利用JavaSDK自带的ManagementFactory类来获取
 			String jvmVersion = getJvmVersion();
+			// JVM的启动参数，也是通过JavaSDK自带的ManagementFactory类来获取
 			String[] options = getJvmStartupOptionsArray();
-
+			// 从环境变量中获取JAVA_HOME
 			String javaHome = System.getenv("JAVA_HOME");
-
+			// 获取flink预配置日志
 			String inheritedLogs = System.getenv("FLINK_INHERITED_LOGS");
-
+			// JVM的最大堆内存大小，单位Mb
 			long maxHeapMegabytes = getMaxJvmHeapMemory() >>> 20;
 
 			if (inheritedLogs != null) {
@@ -394,13 +393,14 @@ public class EnvironmentInformation {
 
 			log.info("--------------------------------------------------------------------------------");
 			log.info(" Starting " + componentName + " (Version: " + version + ", Scala: " + scalaVersion + ", "
-					+ "Rev:" + rev.commitId + ", " + "Date:" + rev.commitDate + ")");
+				+ "Rev:" + rev.commitId + ", " + "Date:" + rev.commitDate + ")");
 			log.info(" OS current user: " + System.getProperty("user.name"));
 			log.info(" Current Hadoop/Kerberos user: " + getHadoopUser());
 			log.info(" JVM: " + jvmVersion);
 			log.info(" Maximum heap size: " + maxHeapMegabytes + " MiBytes");
 			log.info(" JAVA_HOME: " + (javaHome == null ? "(not set)" : javaHome));
 
+			//打印hadoop的版本信息
 			String hadoopVersionString = getHadoopVersionString();
 			if (hadoopVersionString != null) {
 				log.info(" Hadoop version: " + hadoopVersionString);
@@ -410,20 +410,18 @@ public class EnvironmentInformation {
 
 			if (options.length == 0) {
 				log.info(" JVM Options: (none)");
-			}
-			else {
+			} else {
 				log.info(" JVM Options:");
-				for (String s: options) {
+				for (String s : options) {
 					log.info("    " + s);
 				}
 			}
 
 			if (commandLineArgs == null || commandLineArgs.length == 0) {
 				log.info(" Program Arguments: (none)");
-			}
-			else {
+			} else {
 				log.info(" Program Arguments:");
-				for (String s: commandLineArgs) {
+				for (String s : commandLineArgs) {
 					log.info("    " + s);
 				}
 			}
@@ -452,8 +450,11 @@ public class EnvironmentInformation {
 
 	// --------------------------------------------------------------------------------------------
 
-	/** Don't instantiate this class */
-	private EnvironmentInformation() {}
+	/**
+	 * Don't instantiate this class
+	 */
+	private EnvironmentInformation() {
+	}
 
 	// --------------------------------------------------------------------------------------------
 
@@ -462,11 +463,15 @@ public class EnvironmentInformation {
 	 * code.
 	 */
 	public static class RevisionInformation {
-		
-		/** The git commit id (hash) */
+
+		/**
+		 * The git commit id (hash)
+		 */
 		public final String commitId;
-		
-		/** The git commit date */
+
+		/**
+		 * The git commit date
+		 */
 		public final String commitDate;
 
 		public RevisionInformation(String commitId, String commitDate) {
