@@ -59,8 +59,9 @@ public class ApplicationClusterDeployer implements ApplicationDeployer {
 
 		final ClusterClientFactory<ClusterID> clientFactory = clientServiceLoader.getClusterClientFactory(configuration);
 		try (final ClusterDescriptor<ClusterID> clusterDescriptor = clientFactory.createClusterDescriptor(configuration)) {
+			//获取集群实例
 			final ClusterSpecification clusterSpecification = clientFactory.getClusterSpecification(configuration);
-
+			//部署应用
 			clusterDescriptor.deployApplicationCluster(clusterSpecification, applicationConfiguration);
 		}
 	}

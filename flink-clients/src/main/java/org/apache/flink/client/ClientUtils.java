@@ -124,20 +124,21 @@ public enum ClientUtils {
 			boolean enforceSingleJobExecution,
 			boolean suppressSysout) throws ProgramInvocationException {
 		checkNotNull(executorServiceLoader);
+		// 获取代码加载loader
 		final ClassLoader userCodeClassLoader = program.getUserCodeClassLoader();
 		final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
 		try {
 			Thread.currentThread().setContextClassLoader(userCodeClassLoader);
 
 			LOG.info("Starting program (detached: {})", !configuration.getBoolean(DeploymentOptions.ATTACHED));
-
+			// 设置作业的上下文环境
 			ContextEnvironment.setAsContext(
 				executorServiceLoader,
 				configuration,
 				userCodeClassLoader,
 				enforceSingleJobExecution,
 				suppressSysout);
-
+			// 设置Stream 的上下文环境
 			StreamContextEnvironment.setAsContext(
 				executorServiceLoader,
 				configuration,
@@ -146,8 +147,10 @@ public enum ClientUtils {
 				suppressSysout);
 
 			try {
+				//调用用户主类方法，最终执行程序
 				program.invokeInteractiveModeForExecution();
 			} finally {
+				// 上下文环境恢复
 				ContextEnvironment.unsetAsContext();
 				StreamContextEnvironment.unsetAsContext();
 			}

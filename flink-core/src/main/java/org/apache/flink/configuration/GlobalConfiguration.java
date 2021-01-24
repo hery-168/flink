@@ -126,7 +126,7 @@ public final class GlobalConfiguration {
 		}
 		//将配置文件转换为配置对象
 		Configuration configuration = loadYAMLResource(yamlConfigFile);
-
+		//判断是否有动态传递的配置
 		if (dynamicProperties != null) {
 			configuration.addAll(dynamicProperties);
 		}

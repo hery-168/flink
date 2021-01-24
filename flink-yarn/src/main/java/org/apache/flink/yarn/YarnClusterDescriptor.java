@@ -389,8 +389,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			final ApplicationConfiguration applicationConfiguration) throws ClusterDeploymentException {
 		checkNotNull(clusterSpecification);
 		checkNotNull(applicationConfiguration);
-
+		//获取部署模式
 		final YarnDeploymentTarget deploymentTarget = YarnDeploymentTarget.fromConfig(flinkConfiguration);
+		//限定部署模式必须为run-application模式
 		if (YarnDeploymentTarget.APPLICATION != deploymentTarget) {
 			throw new ClusterDeploymentException(
 					"Couldn't deploy Yarn Application Cluster." +
@@ -399,11 +400,12 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		}
 
 		applicationConfiguration.applyToConfiguration(flinkConfiguration);
-
+		//获取jar，并检查是否有多个
 		final List<String> pipelineJars = flinkConfiguration.getOptional(PipelineOptions.JARS).orElse(Collections.emptyList());
 		Preconditions.checkArgument(pipelineJars.size() == 1, "Should only have one jar");
 
 		try {
+			//开始将应用部署到yarn集群上
 			return deployInternal(
 					clusterSpecification,
 					"Flink Application Cluster",

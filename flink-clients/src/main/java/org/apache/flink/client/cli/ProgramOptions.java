@@ -69,15 +69,15 @@ public class ProgramOptions extends CommandLineOptions {
 
 	protected ProgramOptions(CommandLine line) throws CliArgsException {
 		super(line);
-
+		// 获取程序的main 入口类
 		this.entryPointClass = line.hasOption(CLASS_OPTION.getOpt()) ?
 			line.getOptionValue(CLASS_OPTION.getOpt()) : null;
-
+		// 获取jar file 的路径
 		this.jarFilePath = line.hasOption(JAR_OPTION.getOpt()) ?
 			line.getOptionValue(JAR_OPTION.getOpt()) : null;
-
+		// 获取用户提交的参数信息
 		this.programArgs = extractProgramArgs(line);
-
+		// 获取jar的 classpath
 		List<URL> classpaths = new ArrayList<URL>();
 		if (line.hasOption(CLASSPATH_OPTION.getOpt())) {
 			for (String path : line.getOptionValues(CLASSPATH_OPTION.getOpt())) {
@@ -89,7 +89,7 @@ public class ProgramOptions extends CommandLineOptions {
 			}
 		}
 		this.classpaths = classpaths;
-
+		// 获取并行度信息，如果提交命令中有，那么进行解析，否则获取默认值
 		if (line.hasOption(PARALLELISM_OPTION.getOpt())) {
 			String parString = line.getOptionValue(PARALLELISM_OPTION.getOpt());
 			try {
@@ -103,12 +103,14 @@ public class ProgramOptions extends CommandLineOptions {
 			}
 		}
 		else {
+			// 配置文件中的默认值是-1 ，代表使用默认的并行度
 			parallelism = ExecutionConfig.PARALLELISM_DEFAULT;
 		}
-
+		// 获取运行模式，如果加了-d 或者-yd则后台运行模式
 		detachedMode = line.hasOption(DETACHED_OPTION.getOpt()) || line.hasOption(YARN_DETACHED_OPTION.getOpt());
+		//如果加了sae，则为前台运行模式，比如用户使用control+c时shutdown
 		shutdownOnAttachedExit = line.hasOption(SHUTDOWN_IF_ATTACHED_OPTION.getOpt());
-
+		// 设置savepoint 的设置
 		this.savepointSettings = CliFrontendParser.createSavepointRestoreSettings(line);
 	}
 

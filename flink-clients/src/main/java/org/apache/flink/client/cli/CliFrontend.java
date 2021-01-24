@@ -199,38 +199,45 @@ public class CliFrontend {
 
 	/**
 	 * Executions the run action.
+	 * 执行程序
 	 *
 	 * @param args Command line arguments for the run action.
 	 */
 	protected void run(String[] args) throws Exception {
 		LOG.info("Running 'run' command.");
-
+		//获取命令行参数选项
 		final Options commandOptions = CliFrontendParser.getRunCommandOptions();
+		//合并用户参数到命令行运行参数中，并封装到命令行对象中
 		final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
 		// evaluate help flag
+		//如果是help命令 打印帮助信息然后直接返回
 		if (commandLine.hasOption(HELP_OPTION.getOpt())) {
 			CliFrontendParser.printHelpForRun(customCommandLines);
 			return;
 		}
-
+		// 检查并返回要使用的用户自定义的CustomCommandLine，
+		// 此时调用的方法为当前类的验证和获取使用的CommandLine方法
 		final CustomCommandLine activeCommandLine =
 			validateAndGetActiveCommandLine(checkNotNull(commandLine));
-
+		// 创建 程序的相关内容
 		final ProgramOptions programOptions = ProgramOptions.create(commandLine);
-
+		// 获取程序
 		final PackagedProgram program =
 			getPackagedProgram(programOptions);
-
+		// 获取程序的依赖内容 主要是job的 url 列表
 		final List<URL> jobJars = program.getJobJarAndDependencies();
+		// 将所有内容封装到configuration 中
 		final Configuration effectiveConfiguration = getEffectiveConfiguration(
 			activeCommandLine, commandLine, programOptions, jobJars);
 
 		LOG.debug("Effective executor configuration: {}", effectiveConfiguration);
 
 		try {
+			// 执行程序
 			executeProgram(effectiveConfiguration, program);
 		} finally {
+			// 删除依赖包
 			program.deleteExtractedLibraries();
 		}
 	}
@@ -246,6 +253,15 @@ public class CliFrontend {
 		return program;
 	}
 
+	/**
+	 * @param activeCustomCommandLine
+	 * @param commandLine
+	 * @param programOptions
+	 * @param jobJars
+	 * @param <T>
+	 * @return
+	 * @throws FlinkException
+	 */
 	private <T> Configuration getEffectiveConfiguration(
 		final CustomCommandLine activeCustomCommandLine,
 		final CommandLine commandLine,
@@ -255,7 +271,8 @@ public class CliFrontend {
 		final ExecutionConfigAccessor executionParameters = ExecutionConfigAccessor.fromProgramOptions(
 			checkNotNull(programOptions),
 			checkNotNull(jobJars));
-
+	// 检测 并且将CMD的参数初始化到Configuration中，
+	// 接下来以org.apache.flink.yarn.cli.FlinkYarnSessionCli#applyCommandLineOptionsToConfiguration为例
 		final Configuration executorConfig = checkNotNull(activeCustomCommandLine)
 			.applyCommandLineOptionsToConfiguration(commandLine);
 
@@ -891,40 +908,42 @@ public class CliFrontend {
 	public int parseParameters(String[] args) {
 
 		// check for action
+		// 检测参数
 		if (args.length < 1) {
 			CliFrontendParser.printHelp(customCommandLines);
 			System.out.println("Please specify an action.");
 			return 1;
 		}
 
-		// get action
+		// get action  获取参数执行类型
+		// flink  run  ......
 		String action = args[0];
 
-		// remove action from parameters
+		// remove action from parameters 移出action
 		final String[] params = Arrays.copyOfRange(args, 1, args.length);
 
 		try {
 			// do action
 			switch (action) {
-				case ACTION_RUN:
+				case ACTION_RUN:// run 作业 启动一般的运行方法，并提交客户端代码
 					run(params);
 					return 0;
 				case ACTION_RUN_APPLICATION:
-					runApplication(params);
+					runApplication(params); //使用application 模式提交作业
 					return 0;
-				case ACTION_LIST:
+				case ACTION_LIST:  // list 所有参数
 					list(params);
 					return 0;
 				case ACTION_INFO:
 					info(params);
 					return 0;
-				case ACTION_CANCEL:
+				case ACTION_CANCEL:// 取消作业
 					cancel(params);
 					return 0;
-				case ACTION_STOP:
+				case ACTION_STOP:// 停止作业
 					stop(params);
 					return 0;
-				case ACTION_SAVEPOINT:
+				case ACTION_SAVEPOINT: // 进行savepoint 操作
 					savepoint(params);
 					return 0;
 				case "-h":
@@ -994,7 +1013,8 @@ public class CliFrontend {
 				customCommandLines);
 			// 5. 通过配置文件，加载安全相关配置信息
 			SecurityUtils.install(new SecurityConfiguration(cli.configuration));
-			// 6. 执行用户端程序
+			// 6. 执行用户端程序  调用匿名方法，返回作业的最后状态码
+			// 6.1 cli.parseParameters(args) 调用当前类的解析参数方法
 			int retCode = SecurityUtils.getInstalledContext()
 				.runSecured(() -> cli.parseParameters(args));
 			// 7. 结束程序
@@ -1013,6 +1033,7 @@ public class CliFrontend {
 
 	/**
 	 * 检测配置文件目录
+	 *
 	 * @return
 	 */
 	public static String getConfigurationDirectoryFromEnv() {
@@ -1053,6 +1074,7 @@ public class CliFrontend {
 
 	/**
 	 * 封装用户输入的命令行参数
+	 *
 	 * @param configuration
 	 * @param configurationDirectory
 	 * @return
@@ -1086,6 +1108,7 @@ public class CliFrontend {
 
 		//	Tips: DefaultCLI must be added at last, because getActiveCustomCommandLine(..) will get the
 		//	      active CustomCommandLine in order and DefaultCLI isActive always return true.
+		//将默认的cli加入到用户命令行中，一定最后加入。因为默认的CLI是活跃的
 		customCommandLines.add(new DefaultCLI(configuration));
 
 		return customCommandLines;
@@ -1102,13 +1125,13 @@ public class CliFrontend {
 	 * @return custom command-line which is active (may only be one at a time)
 	 */
 	public CustomCommandLine validateAndGetActiveCommandLine(CommandLine commandLine) {
-		LOG.debug("Custom commandlines: {}", customCommandLines);
 		for (CustomCommandLine cli : customCommandLines) {
 			LOG.debug("Checking custom commandline {}, isActive: {}", cli, cli.isActive(commandLine));
 			if (cli.isActive(commandLine)) {
 				return cli;
 			}
 		}
+		LOG.debug("Custom commandlines: {}", customCommandLines);
 		throw new IllegalStateException("No valid command-line found.");
 	}
 
@@ -1119,19 +1142,20 @@ public class CliFrontend {
 	 * @param params    The constructor parameters
 	 */
 	private static CustomCommandLine loadCustomCommandLine(String className, Object... params) throws Exception {
-
+		//将类名实例化，该实例需要实现了org.apache.flink.client.cli.CustomCommandLine
 		Class<? extends CustomCommandLine> customCliClass =
 			Class.forName(className).asSubclass(CustomCommandLine.class);
 
 		// construct class types from the parameters
+		// 获取所有参数的类型
 		Class<?>[] types = new Class<?>[params.length];
 		for (int i = 0; i < params.length; i++) {
 			checkNotNull(params[i], "Parameters for custom command-lines may not be null.");
 			types[i] = params[i].getClass();
 		}
-
+		//通过参数类型获取构造器实例
 		Constructor<? extends CustomCommandLine> constructor = customCliClass.getConstructor(types);
-
+		//实例化对象，此处调用cli实现类的构造方法
 		return constructor.newInstance(params);
 	}
 

@@ -90,6 +90,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Class handling the command line interface to the YARN session.
+ * flink  yarn session 的cli端
  */
 public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 	private static final Logger LOG = LoggerFactory.getLogger(FlinkYarnSessionCli.class);
@@ -152,7 +153,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 
 	@Nullable
 	private String dynamicPropertiesEncoded = null;
-
+	//反射调用当前构造器实例化
 	public FlinkYarnSessionCli(
 			Configuration configuration,
 			String configurationDirectory,
@@ -176,6 +177,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 			String configurationDirectory,
 			String shortPrefix,
 			String longPrefix,
+			//交互式的参数输入
 			boolean acceptInteractiveInput) throws FlinkException {
 		super(configuration);
 		this.clusterClientServiceLoader = checkNotNull(clusterClientServiceLoader);
@@ -183,7 +185,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 		this.acceptInteractiveInput = acceptInteractiveInput;
 
 		// Create the command line options
-
+		// 支持的参数选项
 		query = new Option(shortPrefix + "q", longPrefix + "query", false, "Display available YARN resources (memory, cores)");
 		applicationId = new Option(shortPrefix + "id", longPrefix + "applicationId", true, "Attach to running YARN session");
 		queue = new Option(shortPrefix + "qu", longPrefix + "queue", true, "Specify YARN queue.");
@@ -223,6 +225,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 		allOptions.addOption(help);
 
 		// try loading a potential yarn properties file
+		// 尝试加载yarn的配置文件
 		this.yarnPropertiesFileLocation = configuration.getString(YarnConfigOptions.PROPERTIES_FILE_LOCATION);
 		final File yarnPropertiesLocation = getYarnPropertiesLocation(yarnPropertiesFileLocation);
 
@@ -237,6 +240,12 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 				throw new FlinkException("Could not read the Yarn properties file " + yarnPropertiesLocation +
 					". Please delete the file at " + yarnPropertiesLocation.getAbsolutePath() + '.', ioe);
 			}
+			//从yarn的配置项中获取applicationId的字符串  一般启动yarn-session 服务，默认会在/tmp/.yarn-properties-{user} 数据如:
+			//			cat /tmp/.yarn-properties-henghe
+			//			#Generated YARN properties file
+			//			#Tue Jan 19 11:09:17 CST 2021
+			//			dynamicPropertiesString=
+			//			applicationID=application_1609817368611_1057
 
 			final String yarnApplicationIdString = yarnPropertiesFile.getProperty(YARN_APPLICATION_ID_KEY);
 
@@ -329,23 +338,27 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 		final Configuration effectiveConfiguration = new Configuration(configuration);
 
 		applyDescriptorOptionToConfig(commandLine, effectiveConfiguration);
-
+		// 获取 ApplicationId
 		final ApplicationId applicationId = getApplicationId(commandLine);
 		if (applicationId != null) {
 			final String zooKeeperNamespace;
 			if (commandLine.hasOption(zookeeperNamespace.getOpt())){
+				//获取zk命名空间
 				zooKeeperNamespace = commandLine.getOptionValue(zookeeperNamespace.getOpt());
 			} else {
 				zooKeeperNamespace = effectiveConfiguration.getString(HA_CLUSTER_ID, applicationId.toString());
 			}
-
+			//获取集群的id
 			effectiveConfiguration.setString(HA_CLUSTER_ID, zooKeeperNamespace);
+			//获取yarn applicationId
 			effectiveConfiguration.setString(YarnConfigOptions.APPLICATION_ID, ConverterUtils.toString(applicationId));
+			//获取部署模式  共三种：yarn-per-job  yarn-session yarn-application
 			effectiveConfiguration.setString(DeploymentOptions.TARGET, YarnSessionClusterExecutor.NAME);
 		} else {
+			// yarn-per-job 模式
 			effectiveConfiguration.setString(DeploymentOptions.TARGET, YarnJobClusterExecutor.NAME);
 		}
-
+		// 获取jm 的内存
 		if (commandLine.hasOption(jmMemory.getOpt())) {
 			String jmMemoryVal = commandLine.getOptionValue(jmMemory.getOpt());
 			if (!MemorySize.MemoryUnit.hasUnit(jmMemoryVal)) {
@@ -353,7 +366,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 			}
 			effectiveConfiguration.set(JobManagerOptions.TOTAL_PROCESS_MEMORY, MemorySize.parse(jmMemoryVal));
 		}
-
+		// 获取tm 的内存
 		if (commandLine.hasOption(tmMemory.getOpt())) {
 			String tmMemoryVal = commandLine.getOptionValue(tmMemory.getOpt());
 			if (!MemorySize.MemoryUnit.hasUnit(tmMemoryVal)) {
@@ -361,7 +374,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 			}
 			effectiveConfiguration.set(TaskManagerOptions.TOTAL_PROCESS_MEMORY, MemorySize.parse(tmMemoryVal));
 		}
-
+		// 获取slots
 		if (commandLine.hasOption(slots.getOpt())) {
 			effectiveConfiguration.setInteger(TaskManagerOptions.NUM_TASK_SLOTS, Integer.parseInt(commandLine.getOptionValue(slots.getOpt())));
 		}
@@ -373,7 +386,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 				effectiveConfiguration.setString(dynProperty.getKey(), dynProperty.getValue());
 			}
 		}
-
+		//检查是否是yarn的Detached模式，最后将提取的参数返回
 		if (isYarnPropertiesFileMode(commandLine)) {
 			return applyYarnProperties(effectiveConfiguration);
 		} else {

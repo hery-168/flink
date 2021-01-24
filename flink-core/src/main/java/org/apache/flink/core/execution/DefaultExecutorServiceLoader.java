@@ -50,7 +50,7 @@ public class DefaultExecutorServiceLoader implements PipelineExecutorServiceLoad
 	@Override
 	public PipelineExecutorFactory getExecutorFactory(final Configuration configuration) {
 		checkNotNull(configuration);
-
+		//SPI机制
 		final ServiceLoader<PipelineExecutorFactory> loader =
 				ServiceLoader.load(PipelineExecutorFactory.class);
 
@@ -60,6 +60,7 @@ public class DefaultExecutorServiceLoader implements PipelineExecutorServiceLoad
 			try {
 				final PipelineExecutorFactory factory = factories.next();
 				if (factory != null && factory.isCompatibleWith(configuration)) {
+					//判断标准 根据任务启动配置
 					compatibleFactories.add(factory);
 				}
 			} catch (Throwable e) {
@@ -70,7 +71,7 @@ public class DefaultExecutorServiceLoader implements PipelineExecutorServiceLoad
 				}
 			}
 		}
-
+		//只能有一个factory符合要求
 		if (compatibleFactories.size() > 1) {
 			final String configStr =
 					configuration.toMap().entrySet().stream()

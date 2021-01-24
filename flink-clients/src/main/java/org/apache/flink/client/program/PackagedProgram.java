@@ -116,19 +116,23 @@ public class PackagedProgram {
 		this.classpaths = checkNotNull(classpaths);
 		this.savepointSettings = checkNotNull(savepointRestoreSettings);
 		this.args = checkNotNull(args);
-
+		// 检测核心参数
 		checkArgument(jarFile != null || entryPointClassName != null, "Either the jarFile or the entryPointClassName needs to be non-null.");
 
 		// whether the job is a Python job.
+		// 检测是否为python
 		this.isPython = isPython(entryPointClassName);
 
 		// load the jar file if exists
+		// 加载jar文件
 		this.jarFile = loadJarFile(jarFile);
 
 		assert this.jarFile != null || entryPointClassName != null;
 
 		// now that we have an entry point, we can extract the nested jar files (if any)
+		//将所有运行时lib下的包抽取到临时目录
 		this.extractedTempLibraries = this.jarFile == null ? Collections.emptyList() : extractContainedLibraries(this.jarFile);
+		// 封装类加载器
 		this.userCodeClassLoader = ClientUtils.buildUserCodeClassLoader(
 			getJobJarAndDependencies(),
 			classpaths,
@@ -136,11 +140,12 @@ public class PackagedProgram {
 			configuration);
 
 		// load the entry point class
+		// 加载main 的入口类
 		this.mainClass = loadMainClass(
 			// if no entryPointClassName name was given, we try and look one up through the manifest
 			entryPointClassName != null ? entryPointClassName : getEntryPointClassNameFromJar(this.jarFile),
 			userCodeClassLoader);
-
+		// 没有main 入口类，抛出异常信息
 		if (!hasMainMethod(mainClass)) {
 			throw new ProgramInvocationException("The given program class does not have a main(String[]) method.");
 		}
