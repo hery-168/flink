@@ -89,7 +89,7 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
 			OnCompletionActions jobCompletionActions,
 			ClassLoader userCodeClassloader,
 			long initializationTimestamp) throws Exception {
-
+		// HeryCode: 返回JobMaster
 		return new JobMaster(
 			rpcService,
 			jobMasterConfiguration,

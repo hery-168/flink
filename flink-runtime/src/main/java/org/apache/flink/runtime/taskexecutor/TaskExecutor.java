@@ -359,6 +359,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 	@Override
 	public void onStart() throws Exception {
 		try {
+			// HeryCode:启动TaskExecutor 服务
 			startTaskExecutorServices();
 		} catch (Throwable t) {
 			final TaskManagerException exception = new TaskManagerException(String.format("Could not start the TaskExecutor %s", getAddress()), t);
@@ -372,6 +373,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 	private void startTaskExecutorServices() throws Exception {
 		try {
 			// start by connecting to the ResourceManager
+			// HeryCode:
 			resourceManagerLeaderRetriever.start(new ResourceManagerLeaderListener());
 
 			// tell the task slot table who's responsible for the task slot actions
@@ -915,6 +917,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 		}
 
 		try {
+			// HeryCode:根据RM命令，分配slot
 			allocateSlot(
 				slotId,
 				jobId,
@@ -950,6 +953,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 		}
 
 		if (job.isConnected()) {
+			// HeryCode: 向jobManager 提供slot
 			offerSlotsToJobManager(jobId);
 		}
 
@@ -972,6 +976,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 			AllocationID allocationId,
 			ResourceProfile resourceProfile) throws SlotAllocationException {
 		if (taskSlotTable.isSlotFree(slotId.getSlotNumber())) {
+			// HeryCode:分配
 			if (taskSlotTable.allocateSlot(slotId.getSlotNumber(), jobId, allocationId, resourceProfile, taskManagerConfiguration.getTimeout())) {
 				log.info("Allocated slot for {}.", allocationId);
 			} else {
@@ -1148,6 +1153,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 				getMainThreadExecutor(),
 				new ResourceManagerRegistrationListener(),
 				taskExecutorRegistration);
+		// HeryCode:start()
 		resourceManagerConnection.start();
 	}
 
@@ -1156,7 +1162,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 			ResourceID resourceManagerResourceId,
 			InstanceID taskExecutorRegistrationId,
 			ClusterInformation clusterInformation) {
-
+		// HeryCode: resourceManagerGateway.sendSlotReport
 		final CompletableFuture<Acknowledge> slotReportResponseFuture = resourceManagerGateway.sendSlotReport(
 			getResourceID(),
 			taskExecutorRegistrationId,
@@ -1288,7 +1294,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 				SlotOffer offer = reservedSlotsIterator.next().generateSlotOffer();
 				reservedSlots.add(offer);
 			}
-
+			// HeryCode:
 			CompletableFuture<Collection<SlotOffer>> acceptedSlotsFuture = jobMasterGateway.offerSlots(
 				getResourceID(),
 				reservedSlots,
@@ -1817,6 +1823,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 		@Override
 		public void notifyLeaderAddress(final String leaderAddress, final UUID leaderSessionID) {
 			runAsync(
+				// HeryCode:调用 notifyOfNewResourceManagerLeader
 				() -> notifyOfNewResourceManagerLeader(
 					leaderAddress,
 					ResourceManagerId.fromUuidOrNull(leaderSessionID)));
@@ -1879,6 +1886,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 					//noinspection ObjectEquality
 					if (resourceManagerConnection == connection) {
 						try {
+							// HeryCode:establishResourceManagerConnection
 							establishResourceManagerConnection(
 								resourceManagerGateway,
 								resourceManagerId,

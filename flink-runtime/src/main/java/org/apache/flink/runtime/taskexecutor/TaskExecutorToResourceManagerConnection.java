@@ -70,6 +70,7 @@ public class TaskExecutorToResourceManagerConnection
 
 	@Override
 	protected RetryingRegistration<ResourceManagerId, ResourceManagerGateway, TaskExecutorRegistrationSuccess> generateRegistration() {
+
 		return new TaskExecutorToResourceManagerConnection.ResourceManagerRegistration(
 			log,
 			rpcService,
@@ -78,12 +79,12 @@ public class TaskExecutorToResourceManagerConnection
 			retryingRegistrationConfiguration,
 			taskExecutorRegistration);
 	}
-
+// HeryCode:注册成功
 	@Override
 	protected void onRegistrationSuccess(TaskExecutorRegistrationSuccess success) {
 		log.info("Successful registration at resource manager {} under registration id {}.",
 			getTargetAddress(), success.getRegistrationId());
-
+		// HeryCode:
 		registrationListener.onRegistrationSuccess(this, success);
 	}
 
@@ -110,16 +111,19 @@ public class TaskExecutorToResourceManagerConnection
 				ResourceManagerId resourceManagerId,
 				RetryingRegistrationConfiguration retryingRegistrationConfiguration,
 				TaskExecutorRegistration taskExecutorRegistration) {
-
+			// HeryCode:调用父类的方法  super()
 			super(log, rpcService, "ResourceManager", ResourceManagerGateway.class, targetAddress, resourceManagerId, retryingRegistrationConfiguration);
+
 			this.taskExecutorRegistration = taskExecutorRegistration;
 		}
 
+		// HeryCode: 开始注册，最后会调用下面这个方法
 		@Override
 		protected CompletableFuture<RegistrationResponse> invokeRegistration(
 				ResourceManagerGateway resourceManager, ResourceManagerId fencingToken, long timeoutMillis) throws Exception {
 
 			Time timeout = Time.milliseconds(timeoutMillis);
+			// HeryCode:注册TaskExecutor
 			return resourceManager.registerTaskExecutor(
 				taskExecutorRegistration,
 				timeout);

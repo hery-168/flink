@@ -62,6 +62,7 @@ public class YarnTaskExecutorRunner {
 	 *
 	 * @param args The command line arguments.
 	 */
+	// HeryCode:yarn 模式下， taskManager的入口类
 	public static void main(String[] args) {
 		EnvironmentInformation.logEnvironmentInfo(LOG, "YARN TaskExecutor runner", args);
 		SignalHandler.register(LOG);
@@ -86,7 +87,7 @@ public class YarnTaskExecutorRunner {
 
 			final Configuration configuration = TaskManagerRunner.loadConfiguration(args);
 			setupAndModifyConfiguration(configuration, currDir, ENV);
-
+			// 核心方法
 			TaskManagerRunner.runTaskManagerSecurely(configuration);
 		}
 		catch (Throwable t) {

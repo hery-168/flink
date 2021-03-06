@@ -153,6 +153,7 @@ public abstract class RetryingRegistration<F extends Serializable, G extends Rpc
 			CompletableFuture<Void> rpcGatewayAcceptFuture = rpcGatewayFuture.thenAcceptAsync(
 				(G rpcGateway) -> {
 					log.info("Resolved {} address, beginning registration", targetName);
+					// HeryCode:进行注册
 					register(rpcGateway, 1, retryingRegistrationConfiguration.getInitialRegistrationTimeoutMillis());
 				},
 				rpcService.getExecutor());
@@ -177,7 +178,7 @@ public abstract class RetryingRegistration<F extends Serializable, G extends Rpc
 								retryingRegistrationConfiguration.getErrorDelayMillis(),
 								strippedFailure.getMessage());
 						}
-
+						// HeryCode: 调用startRegistrationLater
 						startRegistrationLater(retryingRegistrationConfiguration.getErrorDelayMillis());
 					}
 				},
@@ -202,6 +203,7 @@ public abstract class RetryingRegistration<F extends Serializable, G extends Rpc
 
 		try {
 			log.debug("Registration at {} attempt {} (timeout={}ms)", targetName, attempt, timeoutMillis);
+			// HeryCode:调用 invokeRegistration
 			CompletableFuture<RegistrationResponse> registrationFuture = invokeRegistration(gateway, fencingToken, timeoutMillis);
 
 			// if the registration was successful, let the TaskExecutor know

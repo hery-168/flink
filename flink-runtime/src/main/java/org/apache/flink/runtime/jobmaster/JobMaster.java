@@ -353,7 +353,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 	public CompletableFuture<Acknowledge> start(final JobMasterId newJobMasterId) throws Exception {
 		// make sure we receive RPC and async calls
 		start();
-
+		// HeryCode: 异步不阻塞 调用
 		return callAsyncWithoutFencing(() -> startJobExecution(newJobMasterId), RpcUtils.INF_TIMEOUT);
 	}
 
@@ -793,20 +793,22 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		}
 
 		setNewFencingToken(newJobMasterId);
-
+		// HeryCode:真正启动JobMaster 服务
 		startJobMasterServices();
 
 		log.info("Starting execution of job {} ({}) under job master id {}.", jobGraph.getName(), jobGraph.getJobID(), newJobMasterId);
-
+		// HeryCode:重置和启动调度器 Scheduler
 		resetAndStartScheduler();
 
 		return Acknowledge.get();
 	}
 
 	private void startJobMasterServices() throws Exception {
+		// HeryCode:心跳服务 TM 和RM
 		startHeartbeatServices();
 
 		// start the slot pool make sure the slot pool now accepts messages for this leader
+		// HeryCode:启动slotPool
 		slotPool.start(getFencingToken(), getAddress(), getMainThreadExecutor());
 
 		//TODO: Remove once the ZooKeeperLeaderRetrieval returns the stored address upon start
@@ -817,6 +819,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		//   - activate leader retrieval for the resource manager
 		//   - on notification of the leader, the connection will be established and
 		//     the slot pool will start requesting slots
+		// HeryCode:与RM建立连接，slotPool开始请求资源，因为JobMaster知道job的图，知道需要的资源，所有可以去申请slot
 		resourceManagerLeaderRetriever.start(new ResourceManagerLeaderListener());
 	}
 
@@ -1026,7 +1029,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		assert(establishedResourceManagerConnection == null);
 
 		log.info("Connecting to ResourceManager {}", resourceManagerAddress);
-
+		// HeryCode: 创建ResourceManagerConnection
 		resourceManagerConnection = new ResourceManagerConnection(
 			log,
 			jobGraph.getJobID(),
@@ -1036,7 +1039,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 			resourceManagerAddress.getAddress(),
 			resourceManagerAddress.getResourceManagerId(),
 			scheduledExecutorService);
-
+		// HeryCode:启动ResourceManagerConnection
 		resourceManagerConnection.start();
 	}
 
@@ -1056,7 +1059,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 			establishedResourceManagerConnection = new EstablishedResourceManagerConnection(
 				resourceManagerGateway,
 				resourceManagerResourceId);
-
+			// HeryCode:slorPoll 连接RM
 			slotPool.connectToResourceManager(resourceManagerGateway);
 
 			resourceManagerHeartbeatManager.monitorTarget(resourceManagerResourceId, new HeartbeatTarget<Void>() {
@@ -1122,6 +1125,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 
 		@Override
 		public void notifyLeaderAddress(final String leaderAddress, final UUID leaderSessionID) {
+			// HeryCode:核心方法notifyOfNewResourceManagerLeader
 			runAsync(
 				() -> notifyOfNewResourceManagerLeader(
 					leaderAddress,
@@ -1177,7 +1181,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 				protected CompletableFuture<RegistrationResponse> invokeRegistration(
 						ResourceManagerGateway gateway, ResourceManagerId fencingToken, long timeoutMillis) {
 					Time timeout = Time.milliseconds(timeoutMillis);
-
+				// HeryCode:注册JobManager
 					return gateway.registerJobManager(
 						jobMasterId,
 						jobManagerResourceID,

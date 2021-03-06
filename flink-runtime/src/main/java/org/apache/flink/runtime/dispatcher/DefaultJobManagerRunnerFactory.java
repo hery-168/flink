@@ -71,7 +71,7 @@ public enum DefaultJobManagerRunnerFactory implements JobManagerRunnerFactory {
 			fatalErrorHandler,
 			schedulerNGFactory,
 			shuffleMaster);
-
+		// HeryCode:JobManager 的实现 核心类
 		return new JobManagerRunnerImpl(
 			jobGraph,
 			jobMasterFactory,

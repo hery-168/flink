@@ -152,6 +152,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 	protected void initializeInternal() throws Exception {
 		final YarnContainerEventHandler yarnContainerEventHandler = new YarnContainerEventHandler();
 		try {
+			// HeryCode:创建yarn 的 resourceManager ，然后进行初始化和启动
 			resourceManagerClient = yarnResourceManagerClientFactory.createResourceManagerClient(
 				yarnHeartbeatIntervalMillis,
 				yarnContainerEventHandler);
@@ -167,7 +168,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 		} catch (Exception e) {
 			throw new ResourceManagerException("Could not start resource manager client.", e);
 		}
-
+		// HeryCode:创建yarn 的NodeManager 然后初始化和启动
 		nodeManagerClient = yarnNodeManagerClientFactory.createNodeManagerClient(yarnContainerEventHandler);
 		nodeManagerClient.init(yarnConfig);
 		nodeManagerClient.start();

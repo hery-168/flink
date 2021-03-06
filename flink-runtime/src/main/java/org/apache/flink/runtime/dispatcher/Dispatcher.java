@@ -208,13 +208,14 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
 	@Override
 	public void onStart() throws Exception {
 		try {
+			// HeryCode:启动dispatcher服务，用户启动监控
 			startDispatcherServices();
 		} catch (Throwable t) {
 			final DispatcherException exception = new DispatcherException(String.format("Could not start the Dispatcher %s", getAddress()), t);
 			onFatalError(exception);
 			throw exception;
 		}
-
+		// HeryCode: 启动jobMaster
 		startRecoveredJobs();
 		this.dispatcherBootstrap = this.dispatcherBootstrapFactory.create(
 				getSelfGateway(DispatcherGateway.class),
@@ -240,6 +241,7 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
 	private void runRecoveredJob(final JobGraph recoveredJob) {
 		checkNotNull(recoveredJob);
 		try {
+			// HeryCode: 运行job
 			runJob(recoveredJob, ExecutionType.RECOVERY);
 		} catch (Throwable throwable) {
 			onFatalError(new DispatcherException(String.format("Could not start recovered job %s.", recoveredJob.getJobID()), throwable));
@@ -378,6 +380,7 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
 	private void runJob(JobGraph jobGraph, ExecutionType executionType) {
 		Preconditions.checkState(!runningJobs.containsKey(jobGraph.getJobID()));
 		long initializationTimestamp = System.currentTimeMillis();
+		// HeryCode: 创建 和启动 jobManger
 		CompletableFuture<JobManagerRunner> jobManagerRunnerFuture = createJobManagerRunner(jobGraph, initializationTimestamp);
 
 		DispatcherJob dispatcherJob = DispatcherJob.createFor(
@@ -447,6 +450,7 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
 		return CompletableFuture.supplyAsync(
 			() -> {
 				try {
+					// HeryCode:创建 JobMaster  JobManagerRunner 的底层就是JobMaster
 					JobManagerRunner runner = jobManagerRunnerFactory.createJobManagerRunner(
 						jobGraph,
 						configuration,
@@ -457,6 +461,7 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
 						new DefaultJobManagerJobMetricGroupFactory(jobManagerMetricGroup),
 						fatalErrorHandler,
 						initializationTimestamp);
+					// HeryCode: 启动JobMaster
 					runner.start();
 					return runner;
 				} catch (Exception e) {

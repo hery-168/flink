@@ -170,6 +170,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 			SecurityContext securityContext = installSecurityContext(configuration);
 
 			securityContext.runSecured((Callable<Void>) () -> {
+				// HeryCode: 运行集群
 				runCluster(configuration, pluginManager);
 
 				return null;
@@ -205,10 +206,11 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 
 		return SecurityUtils.getInstalledContext();
 	}
-
+	// HeryCode: 运行集群
 	private void runCluster(Configuration configuration, PluginManager pluginManager) throws Exception {
-		synchronized (lock) {
 
+		synchronized (lock) {
+			// HeryCode:初始化服务,创建RPC 服务
 			initializeServices(configuration, pluginManager);
 
 			// write host information into configuration
@@ -216,7 +218,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 			configuration.setInteger(JobManagerOptions.PORT, commonRpcService.getPort());
 
 			final DispatcherResourceManagerComponentFactory dispatcherResourceManagerComponentFactory = createDispatcherResourceManagerComponentFactory(configuration);
-
+			// HeryCode: 创建和启动 jobmanager的组件：dispatcher，resourcemanager,JobMaster 等
 			clusterComponent = dispatcherResourceManagerComponentFactory.create(
 				configuration,
 				ioExecutor,
@@ -253,6 +255,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 		LOG.info("Initializing cluster services.");
 
 		synchronized (lock) {
+			// HeryCode:创建远程RPC
 			commonRpcService = AkkaRpcServiceUtils.createRemoteRpcService(
 				configuration,
 				configuration.getString(JobManagerOptions.ADDRESS),
@@ -526,6 +529,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 
 		final String clusterEntrypointName = clusterEntrypoint.getClass().getSimpleName();
 		try {
+			// HeryCode:启动集群
 			clusterEntrypoint.startCluster();
 		} catch (ClusterEntrypointException e) {
 			LOG.error(String.format("Could not start cluster entrypoint %s.", clusterEntrypointName), e);

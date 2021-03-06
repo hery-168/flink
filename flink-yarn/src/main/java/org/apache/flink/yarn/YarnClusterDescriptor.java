@@ -18,6 +18,10 @@
 
 package org.apache.flink.yarn;
 
+import com.google.common.util.concurrent.AtomicDouble;
+
+import com.sun.xml.bind.v2.TODO;
+
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -450,10 +454,19 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		JobGraph jobGraph,
 		boolean detached) throws ClusterDeploymentException {
 		try {
+			/**
+			 * HeryCode 核心点getYarnJobClusterEntrypoint(),获取入口类，ClusterEntrypoint这个抽象类的实现
+			 * 有下面几种
+			 * YarnJobClusterEntrypoint per-job
+			 * YarnSessionClusterEntrypoint  yarn-session
+			 * YarnApplicationClusterEntryPoint yarn-application
+			 */
 			return deployInternal(
 				clusterSpecification,
-				"Flink per-job cluster",
-				getYarnJobClusterEntrypoint(),
+				"Flink per-job cluster",//HeryCode  默认app 名字
+				getYarnJobClusterEntrypoint(),// HeryCode  yarn 作业集群的入口，获取 YarnJobClusterEntrypoint，启动 AM 的入口
+
+				// 查看YarnJobClusterEntrypoint.java 类
 				jobGraph,
 				detached);
 		} catch (Exception e) {
@@ -493,7 +506,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			String yarnClusterEntrypoint,
 			@Nullable JobGraph jobGraph,
 			boolean detached) throws Exception {
-
+		// HeryCode 进行安全验证
 		final UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
 		if (HadoopUtils.isKerberosSecurityEnabled(currentUser)) {
 			boolean useTicketCache = flinkConfiguration.getBoolean(SecurityOptions.KERBEROS_LOGIN_USETICKETCACHE);
@@ -503,16 +516,17 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 					"does not have Kerberos credentials or delegation tokens!");
 			}
 		}
-
+		//HeryCode  部署前前置校验 如jar路径，conf，yarn 的core数量等信息
 		isReadyForDeployment(clusterSpecification);
 
 		// ------------------ Check if the specified queue exists --------------------
-
+		//HeryCode 检测队列
 		checkYarnQueues(yarnClient);
 
 		// ------------------ Check if the YARN ClusterClient has the requested resources --------------
-
+		// HeryCode 检测yarn是否有足够的资源
 		// Create application via yarnClient
+		// HeryCode:创建应用
 		final YarnClientApplication yarnApplication = yarnClient.createApplication();
 		final GetNewApplicationResponse appResponse = yarnApplication.getNewApplicationResponse();
 
@@ -525,7 +539,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			failSessionDuringDeployment(yarnClient, yarnApplication);
 			throw new YarnDeploymentException("Could not retrieve information about free cluster resources.", e);
 		}
-
+		// HeryCode: yarn的最新内存
 		final int yarnMinAllocationMB = yarnConfiguration.getInt(
 				YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB,
 				YarnConfiguration.DEFAULT_RM_SCHEDULER_MINIMUM_ALLOCATION_MB);
@@ -548,13 +562,13 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		}
 
 		LOG.info("Cluster specification: {}", validClusterSpecification);
-
+		// HeryCode: yarn的执行模式 DETACHED:分离模式 NORMAL:占用模式
 		final ClusterEntrypoint.ExecutionMode executionMode = detached ?
 				ClusterEntrypoint.ExecutionMode.DETACHED
 				: ClusterEntrypoint.ExecutionMode.NORMAL;
 
 		flinkConfiguration.setString(ClusterEntrypoint.EXECUTION_MODE, executionMode.toString());
-
+		// HeryCode: 启动AM
 		ApplicationReport report = startAppMaster(
 				flinkConfiguration,
 				applicationName,
@@ -678,6 +692,18 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		}
 	}
 
+	/**
+	 * HeryCode 启动AM
+	 * @param configuration
+	 * @param applicationName
+	 * @param yarnClusterEntrypoint
+	 * @param jobGraph
+	 * @param yarnClient
+	 * @param yarnApplication
+	 * @param clusterSpecification
+	 * @return
+	 * @throws Exception
+	 */
 	private ApplicationReport startAppMaster(
 			Configuration configuration,
 			String applicationName,
@@ -688,7 +714,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			ClusterSpecification clusterSpecification) throws Exception {
 
 		// ------------------ Initialize the file systems -------------------------
-
+		// HeryCode:初始化文件系统（HDFS）
 		org.apache.flink.core.fs.FileSystem.initialize(
 				configuration,
 				PluginUtils.createPluginManagerFromRootFolder(configuration));
@@ -702,11 +728,11 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 					+ "specified Hadoop configuration path is wrong and the system is using the default Hadoop configuration values."
 					+ "The Flink YARN client needs to store its files in a distributed file system");
 		}
-
+		// HeryCode:获取应用提交的上下文
 		ApplicationSubmissionContext appContext = yarnApplication.getApplicationSubmissionContext();
-
+		// HeryCode:获取上传的路径
 		final List<Path> providedLibDirs = Utils.getQualifiedRemoteSharedPaths(configuration, yarnConfiguration);
-
+		// HeryCode:获取yarn应用的文件上传器
 		final YarnApplicationFileUploader fileUploader = YarnApplicationFileUploader.from(
 			fs,
 			getStagingDir(fs),
@@ -719,14 +745,14 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		for (File file : shipFiles) {
 			systemShipFiles.add(file.getAbsoluteFile());
 		}
-
+		// conf 的log4j配置文件
 		final String logConfigFilePath = configuration.getString(YarnConfigOptionsInternal.APPLICATION_LOG_CONFIG_FILE);
 		if (logConfigFilePath != null) {
 			systemShipFiles.add(new File(logConfigFilePath));
 		}
 
 		// Set-up ApplicationSubmissionContext for the application
-
+		// HeryCode:设置ApplicationId
 		final ApplicationId appId = appContext.getApplicationId();
 
 		// ------------------ Add Zookeeper namespace to local flinkConfiguraton ------
@@ -737,11 +763,12 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			zkNamespace = configuration.getString(HighAvailabilityOptions.HA_CLUSTER_ID, String.valueOf(appId));
 			setZookeeperNamespace(zkNamespace);
 		}
-
+		// HeryCode:高可用配置
 		configuration.setString(HighAvailabilityOptions.HA_CLUSTER_ID, zkNamespace);
 
 		if (HighAvailabilityMode.isHighAvailabilityModeActivated(configuration)) {
 			// activate re-execution of failed applications
+			// HeryCode:yarn 重试次数，默认 2
 			appContext.setMaxAppAttempts(
 					configuration.getInteger(
 							YarnConfigOptions.APPLICATION_ATTEMPTS.key(),
@@ -750,12 +777,13 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			activateHighAvailabilitySupport(appContext);
 		} else {
 			// set number of application retries to 1 in the default case
+			// HeryCode:不是高可用重试次数为 1
 			appContext.setMaxAppAttempts(
 					configuration.getInteger(
 							YarnConfigOptions.APPLICATION_ATTEMPTS.key(),
 							1));
 		}
-
+		// HeryCode:获取用户jar，是从jobGraph中获取
 		final Set<Path> userJarFiles = new HashSet<>();
 		if (jobGraph != null) {
 			userJarFiles.addAll(jobGraph.getUserJars().stream().map(f -> f.toUri()).map(Path::new).collect(Collectors.toSet()));
@@ -765,7 +793,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		if (jarUrls != null && YarnApplicationClusterEntryPoint.class.getName().equals(yarnClusterEntrypoint)) {
 			userJarFiles.addAll(jarUrls.stream().map(Path::new).collect(Collectors.toSet()));
 		}
-
+		// HeryCode:flink per-job 模式下，文件上传器上传文件
 		// only for per job mode
 		if (jobGraph != null) {
 			for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry : jobGraph.getUserArtifacts().entrySet()) {
@@ -788,7 +816,11 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		// Register all files in provided lib dirs as local resources with public visibility
 		// and upload the remaining dependencies as local resources with APPLICATION visibility.
 		final List<String> systemClassPaths = fileUploader.registerProvidedLocalResources();
-		final List<String> uploadedDependencies = fileUploader.registerMultipleLocalResources(
+		// HeryCode:多次调用上传 HDFS 的方法，分别是：
+		// => systemShipFiles：日志的配置文件、lib/目录下除了 dist 的 jar 包
+		// => shipOnlyFiles：plugins/目录下的文件
+		// => userJarFiles：用户代码的 jar 包
+				final List<String> uploadedDependencies = fileUploader.registerMultipleLocalResources(
 			systemShipFiles.stream().map(e -> new Path(e.toURI())).collect(Collectors.toSet()),
 			Path.CUR_DIR,
 			LocalResourceType.FILE);
@@ -813,6 +845,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		}
 
 		// Upload and register user jars
+		// HeryCode:上传用户 jars
 		final List<String> userClassPaths = fileUploader.registerMultipleLocalResources(
 			userJarFiles,
 			userJarInclusion == YarnConfigOptions.UserJarInclusion.DISABLED
@@ -840,6 +873,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		}
 
 		// Setup jar for ApplicationMaster
+		// HeryCode:上传和配置 ApplicationMaster 的 jar 包：flink-dist*.jar
 		final YarnLocalResourceDescriptor localResourceDescFlinkJar = fileUploader.uploadFlinkDist(flinkJarPath);
 		classPathBuilder.append(localResourceDescFlinkJar.getResourceKey()).append(File.pathSeparator);
 
@@ -856,7 +890,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
 				final String jobGraphFilename = "job.graph";
 				configuration.setString(JOB_GRAPH_FILE_PATH, jobGraphFilename);
-
+				// HeryCode:将 JobGraph 写入 tmp 文件并添加到本地资源，并上传到 HDFS
 				fileUploader.registerSingleLocalResource(
 					jobGraphFilename,
 					new Path(tmpJobGraphFile.toURI()),
@@ -879,6 +913,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		// write out configuration file
 		File tmpConfigurationFile = null;
 		try {
+			// HeryCode:上传 flink 配置文件 flink-conf.yaml
 			tmpConfigurationFile = File.createTempFile(appId + "-flink-conf.yaml", null);
 			BootstrapTools.writeConfiguration(configuration, tmpConfigurationFile);
 
@@ -923,7 +958,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 				configuration.set(SecurityOptions.KERBEROS_KRB5_PATH, System.getProperty("java.security.krb5.conf"));
 			}
 		}
-
+		// HeryCode:krb5 权限认证
 		Path remoteKrb5Path = null;
 		boolean hasKrb5 = false;
 		String krb5Config = configuration.get(SecurityOptions.KERBEROS_KRB5_PATH);
@@ -966,6 +1001,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		final JobManagerProcessSpec processSpec = JobManagerProcessUtils.processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
 			flinkConfiguration,
 			JobManagerOptions.TOTAL_PROCESS_MEMORY);
+		// HeryCode: 封装启动 AM container 的 Java 命令
 		final ContainerLaunchContext amContainer = setupApplicationMasterContainer(
 				yarnClusterEntrypoint,
 				hasKrb5,
@@ -980,11 +1016,12 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 				ListUtils.union(yarnAccessList, fileUploader.getRemotePaths()), yarnConfiguration
 			);
 		}
-
+		// HeryCode:指定容器需要的资源
 		amContainer.setLocalResources(fileUploader.getRegisteredLocalResources());
 		fileUploader.close();
 
 		// Setup CLASSPATH and environment variables for ApplicationMaster
+		// HeryCode:创建map，用来存储AM的环境信息和类路径
 		final Map<String, String> appMasterEnv = new HashMap<>();
 		// set user specified app master environment variables
 		appMasterEnv.putAll(
@@ -1022,7 +1059,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
 		// set classpath from YARN configuration
 		Utils.setupYarnClassPath(yarnConfiguration, appMasterEnv);
-
+		// HeryCode:将环境的map放入容器中，这样容器中就有各种信息了
 		amContainer.setEnvironment(appMasterEnv);
 
 		// Set up resource type requirements for ApplicationMaster
@@ -1031,7 +1068,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		capability.setVirtualCores(flinkConfiguration.getInteger(YarnConfigOptions.APP_MASTER_VCORES));
 
 		final String customApplicationName = customName != null ? customName : applicationName;
-
+		// HeryCode: 给应用的上下文环境设置各种信息
 		appContext.setApplicationName(customApplicationName);
 		appContext.setApplicationType(applicationType != null ? applicationType : "Apache Flink");
 		appContext.setAMContainerSpec(amContainer);
@@ -1056,6 +1093,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		Thread deploymentFailureHook = new DeploymentFailureHook(yarnApplication, fileUploader.getApplicationDir());
 		Runtime.getRuntime().addShutdownHook(deploymentFailureHook);
 		LOG.info("Submitting application master " + appId);
+		// HeryCode: 核心点，通过YarnClient提交应用
 		yarnClient.submitApplication(appContext);
 
 		LOG.info("Waiting for the cluster to be allocated");
@@ -1070,6 +1108,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			}
 			YarnApplicationState appState = report.getYarnApplicationState();
 			LOG.debug("Application State: {}", appState);
+			// HeryCode:监听引用的状态，做响应的动作
 			switch(appState) {
 				case FAILED:
 				case KILLED:

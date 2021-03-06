@@ -283,6 +283,7 @@ public class SlotPoolImpl implements SlotPool {
 
 		// work on all slots waiting for this connection
 		for (PendingRequest pendingRequest : waitingForResourceManager.values()) {
+			// HeryCode:从ResourceManager 申请slot
 			requestSlotFromResourceManager(resourceManagerGateway, pendingRequest);
 		}
 
@@ -346,7 +347,7 @@ public class SlotPoolImpl implements SlotPool {
 
 		log.info("Requesting new slot [{}] and profile {} with allocation id {} from resource manager.",
 			pendingRequest.getSlotRequestId(), pendingRequest.getResourceProfile(), allocationId);
-
+		// HeryCode:请求slot
 		CompletableFuture<Acknowledge> rmResponse = resourceManagerGateway.requestSlot(
 			jobMasterId,
 			new SlotRequest(jobId, allocationId, pendingRequest.getResourceProfile(), jobManagerAddress),

@@ -57,9 +57,9 @@ public class YarnClusterClientFactory extends AbstractContainerizedClusterClient
 		checkNotNull(configuration);
 
 		final String configurationDirectory =
-				configuration.get(DeploymentOptionsInternal.CONF_DIR);
+			configuration.get(DeploymentOptionsInternal.CONF_DIR);
 		YarnLogConfigUtil.setLogConfigFileInConfig(configuration, configurationDirectory);
-
+		// todo  获取集群描述
 		return getClusterDescriptor(configuration);
 	}
 
@@ -77,17 +77,18 @@ public class YarnClusterClientFactory extends AbstractContainerizedClusterClient
 	}
 
 	private YarnClusterDescriptor getClusterDescriptor(Configuration configuration) {
+		// todo 创建yarn 的客户端 YarnClient
 		final YarnClient yarnClient = YarnClient.createYarnClient();
 		final YarnConfiguration yarnConfiguration = new YarnConfiguration();
-
+		//todo  初始化和启动YarnClient
 		yarnClient.init(yarnConfiguration);
 		yarnClient.start();
-
+		// todo  返回YarnCluster 描述器
 		return new YarnClusterDescriptor(
-				configuration,
-				yarnConfiguration,
-				yarnClient,
-				YarnClientYarnClusterInformationRetriever.create(yarnClient),
-				false);
+			configuration,
+			yarnConfiguration,
+			yarnClient,
+			YarnClientYarnClusterInformationRetriever.create(yarnClient),
+			false);
 	}
 }

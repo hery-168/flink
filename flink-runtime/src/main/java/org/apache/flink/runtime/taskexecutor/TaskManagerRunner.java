@@ -333,7 +333,7 @@ public class TaskManagerRunner implements FatalErrorHandler, AutoCloseableAsync 
 
 	public static void runTaskManager(Configuration configuration, PluginManager pluginManager) throws Exception {
 		final TaskManagerRunner taskManagerRunner = new TaskManagerRunner(configuration, pluginManager, TaskManagerRunner::createTaskExecutorService);
-
+		// HeryCode:启动taskManager 核心方法
 		taskManagerRunner.start();
 	}
 
@@ -356,6 +356,7 @@ public class TaskManagerRunner implements FatalErrorHandler, AutoCloseableAsync 
 		SecurityUtils.install(new SecurityConfiguration(configuration));
 
 		SecurityUtils.getInstalledContext().runSecured(() -> {
+			// HeryCode:运行TaskManager
 			runTaskManager(configuration, pluginManager);
 			return null;
 		});

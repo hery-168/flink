@@ -89,10 +89,11 @@ public abstract class RegisteredRpcConnection<F extends Serializable, G extends 
 	public void start() {
 		checkState(!closed, "The RPC connection is already closed");
 		checkState(!isConnected() && pendingRegistration == null, "The RPC connection is already started");
-
+		// HeryCode:创建注册对象  JM向RM注册
 		final RetryingRegistration<F, G, S> newRegistration = createNewRegistration();
 
 		if (REGISTRATION_UPDATER.compareAndSet(this, null, newRegistration)) {
+			// HeryCode:  开始注册，注册成功调用JobMaster的onRegistrationSuccess 方法
 			newRegistration.startRegistration();
 		} else {
 			// concurrent start operation
@@ -222,6 +223,7 @@ public abstract class RegisteredRpcConnection<F extends Serializable, G extends 
 	// ------------------------------------------------------------------------
 
 	private RetryingRegistration<F, G, S> createNewRegistration() {
+		// HeryCode: 核心方法：下面行中的generateRegistration()
 		RetryingRegistration<F, G, S> newRegistration = checkNotNull(generateRegistration());
 
 		CompletableFuture<Tuple2<G, S>> future = newRegistration.getFuture();

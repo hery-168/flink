@@ -58,20 +58,37 @@ public class AbstractJobClusterExecutor<ClusterID, ClientFactory extends Cluster
 	}
 
 	@Override
-	public CompletableFuture<JobClient> execute(@Nonnull final Pipeline pipeline, @Nonnull final Configuration configuration, @Nonnull final ClassLoader userCodeClassloader) throws Exception {
+	public CompletableFuture<JobClient> execute(
+		@Nonnull final Pipeline pipeline,
+		@Nonnull final Configuration configuration,
+		@Nonnull final ClassLoader userCodeClassloader) throws Exception {
+		/**
+		 * HeryCode  将流图转换为作业图，也就是StreamGraph->JobGraph
+		 */
 		final JobGraph jobGraph = PipelineExecutorUtils.getJobGraph(pipeline, configuration);
-
-		try (final ClusterDescriptor<ClusterID> clusterDescriptor = clusterClientFactory.createClusterDescriptor(configuration)) {
-			final ExecutionConfigAccessor configAccessor = ExecutionConfigAccessor.fromConfiguration(configuration);
-
-			final ClusterSpecification clusterSpecification = clusterClientFactory.getClusterSpecification(configuration);
-
+		/**
+		 * HeryCode 创建集群描述器
+		 * 集群描述器包含YarnClient ，然后进行初始化和启动，最后返回集群描述器(包含yarn flink 等配置信息和环境信息)
+		 */
+		try (final ClusterDescriptor<ClusterID> clusterDescriptor = clusterClientFactory.createClusterDescriptor(
+			configuration)) {
+			final ExecutionConfigAccessor configAccessor = ExecutionConfigAccessor.fromConfiguration(
+				configuration);
+			// HeryCode 获取集群指定的特有信息，如 jobmanager、taskManager的内存，slot数量等
+			final ClusterSpecification clusterSpecification = clusterClientFactory.getClusterSpecification(
+				configuration);
+			/**
+			 * HeryCode 部署集群
+			 */
 			final ClusterClientProvider<ClusterID> clusterClientProvider = clusterDescriptor
-					.deployJobCluster(clusterSpecification, jobGraph, configAccessor.getDetachedMode());
+				.deployJobCluster(clusterSpecification, jobGraph, configAccessor.getDetachedMode());
 			LOG.info("Job has been submitted with JobID " + jobGraph.getJobID());
 
 			return CompletableFuture.completedFuture(
-					new ClusterClientJobClientAdapter<>(clusterClientProvider, jobGraph.getJobID(), userCodeClassloader));
+				new ClusterClientJobClientAdapter<>(
+					clusterClientProvider,
+					jobGraph.getJobID(),
+					userCodeClassloader));
 		}
 	}
 }

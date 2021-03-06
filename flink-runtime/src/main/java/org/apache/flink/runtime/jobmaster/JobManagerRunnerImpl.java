@@ -138,6 +138,7 @@ public class JobManagerRunnerImpl implements LeaderContender, OnCompletionAction
 		this.leaderGatewayFuture = new CompletableFuture<>();
 
 		// now start the JobManager
+		// HeryCode: 启动Jobmanager
 		this.jobMasterService = jobMasterFactory.createJobMasterService(jobGraph, this, userCodeLoader, initializationTimestamp);
 	}
 
@@ -293,6 +294,7 @@ public class JobManagerRunnerImpl implements LeaderContender, OnCompletionAction
 				if (jobSchedulingStatus == JobSchedulingStatus.DONE) {
 					return jobAlreadyDone();
 				} else {
+					// HeryCode:启动JobMaster
 					return startJobMaster(leaderSessionId);
 				}
 			});

@@ -88,10 +88,11 @@ public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
 			args,
 			new DynamicParametersConfigurationParserFactory(),
 			YarnJobClusterEntrypoint.class);
+		// HeryCode:封装配置对象
 		final Configuration configuration = YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
-
+		// HeryCode:创建YarnJob执行入口
 		YarnJobClusterEntrypoint yarnJobClusterEntrypoint = new YarnJobClusterEntrypoint(configuration);
-
+		// HeryCode:
 		ClusterEntrypoint.runClusterEntrypoint(yarnJobClusterEntrypoint);
 	}
 }

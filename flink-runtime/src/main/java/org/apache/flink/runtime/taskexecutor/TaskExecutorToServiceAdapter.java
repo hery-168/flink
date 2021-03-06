@@ -33,6 +33,7 @@ public class TaskExecutorToServiceAdapter implements TaskManagerRunner.TaskExecu
 
 	@Override
 	public void start() {
+		// HeryCode: TaskManager 的底层是启动的TaskExecutor,是通过RPC 服务的形式，最后实际调用的是TaskExecutor的OnStart 方法
 		taskExecutor.start();
 	}
 

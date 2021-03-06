@@ -118,6 +118,7 @@ public class DefaultDispatcherResourceManagerComponentFactory implements Dispatc
 		DispatcherRunner dispatcherRunner = null;
 
 		try {
+			// HeryCode: 从HA 中获取dispatcher的leader
 			dispatcherLeaderRetrievalService = highAvailabilityServices.getDispatcherLeaderRetriever();
 
 			resourceManagerRetrievalService = highAvailabilityServices.getResourceManagerLeaderRetriever();
@@ -162,7 +163,7 @@ public class DefaultDispatcherResourceManagerComponentFactory implements Dispatc
 			webMonitorEndpoint.start();
 
 			final String hostname = RpcUtils.getHostname(rpcService);
-
+			// HeryCode:创建ResourceManger  yarn的ResourceManager
 			resourceManager = resourceManagerFactory.createResourceManager(
 				configuration,
 				ResourceID.generate(),
@@ -192,6 +193,7 @@ public class DefaultDispatcherResourceManagerComponentFactory implements Dispatc
 				ioExecutor);
 
 			log.debug("Starting Dispatcher.");
+			// HeryCode:创建 启动Dispatcher
 			dispatcherRunner = dispatcherRunnerFactory.createDispatcherRunner(
 				highAvailabilityServices.getDispatcherLeaderElectionService(),
 				fatalErrorHandler,

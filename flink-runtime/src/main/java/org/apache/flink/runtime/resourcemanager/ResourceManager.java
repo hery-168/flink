@@ -161,7 +161,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 	 * @see #clearStateInternal()
 	 */
 	private CompletableFuture<Void> clearStateFuture = CompletableFuture.completedFuture(null);
-
+	// HeryCode:
 	public ResourceManager(
 			RpcService rpcService,
 			ResourceID resourceId,
@@ -226,9 +226,9 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 	private void startResourceManagerServices() throws Exception {
 		try {
 			leaderElectionService = highAvailabilityServices.getResourceManagerLeaderElectionService();
-
+			// HeryCode:创建Yarn 的RM和NM,然后进行初始化和启动
 			initialize();
-
+			// HeryCode:通过选举服务，启动ResourceManager
 			leaderElectionService.start(this);
 			jobLeaderIdService.start(new JobLeaderIdActionsImpl());
 
@@ -402,6 +402,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 					if (throwable != null) {
 						return new RegistrationResponse.Decline(throwable.getMessage());
 					} else {
+						// HeryCode: 核心方法 registerTaskExecutorInternal
 						return registerTaskExecutorInternal(taskExecutorGateway, taskExecutorRegistration);
 					}
 				} else {
@@ -417,6 +418,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 		final WorkerRegistration<WorkerType> workerTypeWorkerRegistration = taskExecutors.get(taskManagerResourceId);
 
 		if (workerTypeWorkerRegistration.getInstanceID().equals(taskManagerRegistrationId)) {
+			// HeryCode: registerTaskManager
 			if (slotManager.registerTaskManager(workerTypeWorkerRegistration, slotReport)) {
 				onWorkerRegistered(workerTypeWorkerRegistration.getWorker());
 			}
@@ -467,6 +469,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 					slotRequest.getAllocationId());
 
 				try {
+					// HeryCode:ResourceManager 内部的slotManager 向yarn 的Resourcemanager 申请资源
 					slotManager.registerSlotRequest(slotRequest);
 				} catch (ResourceManagerException e) {
 					return FutureUtils.completedExceptionally(e);
@@ -801,7 +804,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 				oldRegistration.getInstanceID(),
 				new ResourceManagerException(String.format("TaskExecutor %s re-connected to the ResourceManager.", taskExecutorResourceId.getStringWithMetadata())));
 		}
-
+		// HeryCode:启动worker
 		final WorkerType newWorker = workerStarted(taskExecutorResourceId);
 
 		String taskExecutorAddress = taskExecutorRegistration.getTaskExecutorAddress();
@@ -999,6 +1002,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 	 */
 	@Override
 	public void grantLeadership(final UUID newLeaderSessionID) {
+		// HeryCode:核心方法 tryAcceptLeadership
 		final CompletableFuture<Boolean> acceptLeadershipFuture = clearStateFuture
 			.thenComposeAsync((ignored) -> tryAcceptLeadership(newLeaderSessionID), getUnfencedMainThreadExecutor());
 
@@ -1031,7 +1035,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 			}
 
 			setFencingToken(newResourceManagerId);
-
+			// HeryCode: 启动服务,主要是启动心跳服务(与TaskManager JobMaster的心跳服务)和 SoltManager
 			startServicesOnLeadership();
 
 			return prepareLeadershipAsync().thenApply(ignored -> true);
@@ -1041,8 +1045,9 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 	}
 
 	private void startServicesOnLeadership() {
+		// HeryCode:启动心跳服务，根TaskManager JobMaster
 		startHeartbeatServices();
-
+		// HeryCode:启动 SlotManager 核心点
 		slotManager.start(getFencingToken(), getMainThreadExecutor(), new ResourceActionsImpl());
 
 		onLeadership();
@@ -1203,6 +1208,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 		@Override
 		public boolean allocateResource(WorkerResourceSpec workerResourceSpec) {
 			validateRunsInMainThread();
+			// HeryCode:启动新的Worker 核心方法
 			return startNewWorker(workerResourceSpec);
 		}
 

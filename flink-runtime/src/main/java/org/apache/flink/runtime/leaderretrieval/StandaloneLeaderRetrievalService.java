@@ -82,6 +82,7 @@ public class StandaloneLeaderRetrievalService implements LeaderRetrievalService 
 			started = true;
 
 			// directly notify the listener, because we already know the leading JobManager's address
+			// HeryCode: 通知主 服务
 			listener.notifyLeaderAddress(leaderAddress, leaderId);
 		}
 	}

@@ -195,6 +195,7 @@ public class PackagedProgram {
 	 * will be a local execution by default.
 	 */
 	public void invokeInteractiveModeForExecution() throws ProgramInvocationException {
+		//HeryCode 调用主类
 		callMainMethod(mainClass, args);
 	}
 
@@ -297,6 +298,7 @@ public class PackagedProgram {
 		}
 
 		try {
+			// HeryCode 获取main方法
 			mainMethod = entryClass.getMethod("main", String[].class);
 		} catch (NoSuchMethodException e) {
 			throw new ProgramInvocationException("The class " + entryClass.getName() + " has no main(String[]) method.");
@@ -313,7 +315,9 @@ public class PackagedProgram {
 		}
 
 		try {
+			//HeryCode 调用用户代码的main方法
 			mainMethod.invoke(null, (Object) args);
+
 		} catch (IllegalArgumentException e) {
 			throw new ProgramInvocationException("Could not invoke the main method, arguments are not matching.", e);
 		} catch (IllegalAccessException e) {

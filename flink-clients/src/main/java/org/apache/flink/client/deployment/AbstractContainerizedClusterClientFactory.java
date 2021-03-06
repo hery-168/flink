@@ -36,19 +36,25 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID> imple
 	@Override
 	public ClusterSpecification getClusterSpecification(Configuration configuration) {
 		checkNotNull(configuration);
-
+		/**
+		 * HeryCode 设置jobManager 内存大小
+		 */
 		final int jobManagerMemoryMB = JobManagerProcessUtils.processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
 				configuration,
 				JobManagerOptions.TOTAL_PROCESS_MEMORY)
 			.getTotalProcessMemorySize()
 			.getMebiBytes();
-
+		/**
+		 * todo 设置 taskManager 内存大小
+		 */
 		final int taskManagerMemoryMB = TaskExecutorProcessUtils
 			.processSpecFromConfig(TaskExecutorProcessUtils.getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
 				configuration, TaskManagerOptions.TOTAL_PROCESS_MEMORY))
 			.getTotalProcessMemorySize()
 			.getMebiBytes();
-
+		/**
+		 * todo 设置 taskManager slot 大小
+		 */
 		int slotsPerTaskManager = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
 
 		return new ClusterSpecification.ClusterSpecificationBuilder()
