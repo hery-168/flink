@@ -219,6 +219,7 @@ public class AkkaRpcService implements RpcService {
 		checkNotNull(rpcEndpoint, "rpc endpoint");
 
 		final SupervisorActor.ActorRegistration actorRegistration = registerAkkaRpcActor(rpcEndpoint);
+		// HeryCode:创建ActorRef对象
 		final ActorRef actorRef = actorRegistration.getActorRef();
 		final CompletableFuture<Void> actorTerminationFuture = actorRegistration.getTerminationFuture();
 
@@ -237,7 +238,7 @@ public class AkkaRpcService implements RpcService {
 
 		implementedRpcGateways.add(RpcServer.class);
 		implementedRpcGateways.add(AkkaBasedEndpoint.class);
-
+		// HeryCode:封装 InvocationHandler 对象
 		final InvocationHandler akkaInvocationHandler;
 
 		if (rpcEndpoint instanceof FencedRpcEndpoint) {
@@ -268,7 +269,7 @@ public class AkkaRpcService implements RpcService {
 		// from this class . That works better in cases where Flink runs embedded and all Flink
 		// code is loaded dynamically (for example from an OSGI bundle) through a custom ClassLoader
 		ClassLoader classLoader = getClass().getClassLoader();
-
+		// HeryCode:返回RPCServer 通过代理进行转发，最终都转发到InvocationHandler 进行处理
 		@SuppressWarnings("unchecked")
 		RpcServer server = (RpcServer) Proxy.newProxyInstance(
 			classLoader,

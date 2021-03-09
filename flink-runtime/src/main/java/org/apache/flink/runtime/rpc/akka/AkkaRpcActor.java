@@ -136,21 +136,24 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
 
 		state = state.finishTermination();
 	}
-
+	// HeryCode:接收消息
 	@Override
 	public Receive createReceive() {
+
 		return ReceiveBuilder.create()
+			// HeryCode:处理3种类型消息 RemoteHandshakeMessage握手消息，ControlMessages控制消息，其他RPC消息
 			.match(RemoteHandshakeMessage.class, this::handleHandshakeMessage)
 			.match(ControlMessages.class, this::handleControlMessage)
 			.matchAny(this::handleMessage)
 			.build();
 	}
-
+	// HeryCode:处理默认消息
 	private void handleMessage(final Object message) {
 		if (state.isRunning()) {
 			mainThreadValidator.enterMainThread();
 
 			try {
+				// HeryCode:处理RPC消息
 				handleRpcMessage(message);
 			} finally {
 				mainThreadValidator.exitMainThread();
@@ -164,7 +167,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
 				String.format("Discard message, because the rpc endpoint %s has not been started yet.", rpcEndpoint.getAddress())));
 		}
 	}
-
+	// HeryCode:处理控制消息
 	private void handleControlMessage(ControlMessages controlMessage) {
 		try {
 			switch (controlMessage) {
@@ -209,7 +212,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
 				" of type " + message.getClass().getSimpleName() + '.'));
 		}
 	}
-
+	// HeryCode:处理握手消息
 	private void handleHandshakeMessage(RemoteHandshakeMessage handshakeMessage) {
 		if (!isCompatibleVersion(handshakeMessage.getVersion())) {
 			sendErrorIfSender(new AkkaHandshakeException(
@@ -223,6 +226,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
 					"The rpc endpoint does not support the gateway %s.",
 					handshakeMessage.getRpcGateway().getSimpleName())));
 		} else {
+			// HeryCode:tell方式回应
 			getSender().tell(new Status.Success(HandshakeSuccessMessage.INSTANCE), getSelf());
 		}
 	}

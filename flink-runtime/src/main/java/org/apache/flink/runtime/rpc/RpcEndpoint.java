@@ -94,12 +94,15 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 	// ------------------------------------------------------------------------
 
 	/** RPC service to be used to start the RPC server and to obtain rpc gateways. */
+	// HeryCode:核心成员变量
 	private final RpcService rpcService;
 
 	/** Unique identifier for this rpc endpoint. */
 	private final String endpointId;
 
 	/** Interface to access the underlying rpc server. */
+	// HeryCode:核心成员变量
+
 	protected final RpcServer rpcServer;
 
 	/** A reference to the endpoint's main thread, if the current method is called by the main thread. */
@@ -125,6 +128,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 	protected RpcEndpoint(final RpcService rpcService, final String endpointId) {
 		this.rpcService = checkNotNull(rpcService, "rpcService");
 		this.endpointId = checkNotNull(endpointId, "endpointId");
+		// HeryCode: 核心方法 rpc服务 启动 服务器 rpcService 启动Server
 
 		this.rpcServer = rpcService.startServer(this);
 
@@ -168,6 +172,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
 	 * to process remote procedure calls.
 	 */
 	public final void start() {
+		// HeryCode:调用Server的启动，终端的启动，实际是由自身网关（RpcServer）来起到
 		rpcServer.start();
 	}
 

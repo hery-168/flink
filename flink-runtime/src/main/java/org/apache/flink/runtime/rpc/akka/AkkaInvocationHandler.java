@@ -114,6 +114,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+		// HeryCode:获取方法类
 		Class<?> declaringClass = method.getDeclaringClass();
 
 		Object result;
@@ -124,6 +125,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 			declaringClass.equals(StartStoppable.class) ||
 			declaringClass.equals(MainThreadExecutable.class) ||
 			declaringClass.equals(RpcServer.class)) {
+			// HeryCode:如果是网关类，执行invoke
 			result = method.invoke(this, args);
 		} else if (declaringClass.equals(FencedRpcGateway.class)) {
 			throw new UnsupportedOperationException("AkkaInvocationHandler does not support the call FencedRpcGateway#" +
@@ -131,6 +133,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 				"fencing token. Please use RpcService#connect(RpcService, F, Time) with F being the fencing token to " +
 				"retrieve a properly FencedRpcGateway.");
 		} else {
+			// HeryCode:如果不是网关类的，执行invokeRPC
 			result = invokeRpc(method, args);
 		}
 
@@ -201,18 +204,18 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 		Class<?>[] parameterTypes = method.getParameterTypes();
 		Annotation[][] parameterAnnotations = method.getParameterAnnotations();
 		Time futureTimeout = extractRpcTimeout(parameterAnnotations, args, timeout);
-
+		// HeryCode:将消息封装为RpcInvocation
 		final RpcInvocation rpcInvocation = createRpcInvocationMessage(methodName, parameterTypes, args);
 
 		Class<?> returnType = method.getReturnType();
 
 		final Object result;
-
+		// HeryCode:方法返回值是void那么就是tell方法
 		if (Objects.equals(returnType, Void.TYPE)) {
 			tell(rpcInvocation);
 
 			result = null;
-		} else {
+		} else {// HeryCode:有返回值是，那么是ask方式
 			// Capture the call stack. It is significantly faster to do that via an exception than
 			// via Thread.getStackTrace(), because exceptions lazily initialize the stack trace, initially only
 			// capture a lightweight native pointer, and convert that into the stack trace lazily when needed.
@@ -229,11 +232,12 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 					completableFuture.complete(deserializeValueIfNeeded(resultValue, method));
 				}
 			});
-
+			// HeryCode:如果返回类型是 CompletableFuture，那么直接返回CompletableFuture
 			if (Objects.equals(returnType, CompletableFuture.class)) {
 				result = completableFuture;
 			} else {
 				try {
+					// HeryCode:如果返回类型不是 CompletableFuture，那么就主动获取结果(阻塞着，等待返回结果)
 					result = completableFuture.get(futureTimeout.getSize(), futureTimeout.getUnit());
 				} catch (ExecutionException ee) {
 					throw new RpcException("Failure while obtaining synchronous RPC result.", ExceptionUtils.stripExecutionException(ee));
@@ -258,7 +262,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 			final Class<?>[] parameterTypes,
 			final Object[] args) throws IOException {
 		final RpcInvocation rpcInvocation;
-
+		// HeryCode:是否为本地类型，来返回LocalRpcInvocation 或者RemoteRpcInvocation
 		if (isLocal) {
 			rpcInvocation = new LocalRpcInvocation(
 				methodName,
