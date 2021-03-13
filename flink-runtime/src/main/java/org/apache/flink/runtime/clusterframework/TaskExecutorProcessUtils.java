@@ -112,7 +112,7 @@ public class TaskExecutorProcessUtils {
 
 		final MemorySize frameworkHeapMemorySize = TaskExecutorFlinkMemoryUtils.getFrameworkHeapMemorySize(config);
 		final MemorySize frameworkOffHeapMemorySize = TaskExecutorFlinkMemoryUtils.getFrameworkOffHeapMemorySize(config);
-
+		// HeryCode: 返回 TaskExecutorFlinkMemory
 		final TaskExecutorFlinkMemory flinkMemory = new TaskExecutorFlinkMemory(
 			frameworkHeapMemorySize,
 			frameworkOffHeapMemorySize,
@@ -120,7 +120,7 @@ public class TaskExecutorProcessUtils {
 			workerResourceSpec.getTaskOffHeapSize(),
 			workerResourceSpec.getNetworkMemSize(),
 			workerResourceSpec.getManagedMemSize());
-
+		// HeryCode:生成TM 的jvm 内存
 		final JvmMetaspaceAndOverhead jvmMetaspaceAndOverhead =
 			PROCESS_MEMORY_UTILS.deriveJvmMetaspaceAndOverheadFromTotalFlinkMemory(
 				config, flinkMemory.getTotalFlinkMemorySize());

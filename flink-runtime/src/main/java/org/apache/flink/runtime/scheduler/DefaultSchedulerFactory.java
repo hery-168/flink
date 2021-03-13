@@ -83,7 +83,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
 				jobGraph.isCheckpointingEnabled())
 			.create();
 		log.info("Using restart back off time strategy {} for {} ({}).", restartBackoffTimeStrategy, jobGraph.getName(), jobGraph.getJobID());
-
+		// HeryCode:返回默认调度器
 		return new DefaultScheduler(
 			log,
 			jobGraph,

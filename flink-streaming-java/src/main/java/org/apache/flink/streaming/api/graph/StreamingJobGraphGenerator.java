@@ -114,22 +114,24 @@ public class StreamingJobGraphGenerator {
 	}
 
 	public static JobGraph createJobGraph(StreamGraph streamGraph, @Nullable JobID jobID) {
+		// HeryCode:生成jobGraph
 		return new StreamingJobGraphGenerator(streamGraph, jobID).createJobGraph();
 	}
 
 	// ------------------------------------------------------------------------
-
+	// id -> JobVertex
 	private final StreamGraph streamGraph;
 
 	private final Map<Integer, JobVertex> jobVertices;
 	private final JobGraph jobGraph;
 	private final Collection<Integer> builtVertices;
-
+	// 物理边集合（排除了 chain 内部的边）, 按创建顺序排序
 	private final List<StreamEdge> physicalEdgesInOrder;
-
+	// 保存 chain 信息，部署时用来构建 OperatorChain，startNodeId -> (currentNodeId -> StreamConfig)
 	private final Map<Integer, Map<Integer, StreamConfig>> chainedConfigs;
-
+	// 所有节点的配置信息，id -> StreamConfig
 	private final Map<Integer, StreamConfig> vertexConfigs;
+	// 保存每个节点的名字，id -> chainedName
 	private final Map<Integer, String> chainedNames;
 
 	private final Map<Integer, ResourceSpec> chainedMinResources;
@@ -139,7 +141,7 @@ public class StreamingJobGraphGenerator {
 
 	private final StreamGraphHasher defaultStreamGraphHasher;
 	private final List<StreamGraphHasher> legacyStreamGraphHashers;
-
+	// 构造函数，入参只有 StreamGraph
 	private StreamingJobGraphGenerator(StreamGraph streamGraph, @Nullable JobID jobID) {
 		this.streamGraph = streamGraph;
 		this.defaultStreamGraphHasher = new StreamGraphHasherV2();
@@ -162,11 +164,14 @@ public class StreamingJobGraphGenerator {
 		preValidate();
 
 		// make sure that all vertices start immediately
+		//herycode  streaming 模式下，调度模式是所有节点（vertices）一起启动
 		jobGraph.setScheduleMode(streamGraph.getScheduleMode());
 		jobGraph.enableApproximateLocalRecovery(streamGraph.getCheckpointConfig().isApproximateLocalRecoveryEnabled());
 
 		// Generate deterministic hashes for the nodes in order to identify them across
 		// submission iff they didn't change.
+		//herycode 广度优先遍历 StreamGraph 并且为每个 SteamNode 生成 hash id，
+		// 保证如果提交的拓扑没有改变，则每次生成的 hash 都是一样的
 		Map<Integer, byte[]> hashes = defaultStreamGraphHasher.traverseStreamGraphAndGenerateHashes(streamGraph);
 
 		// Generate legacy version hashes for backwards compatibility
@@ -174,11 +179,13 @@ public class StreamingJobGraphGenerator {
 		for (StreamGraphHasher hasher : legacyStreamGraphHashers) {
 			legacyHashes.add(hasher.traverseStreamGraphAndGenerateHashes(streamGraph));
 		}
-
+		//herycode 核心函数，生成 JobVertex，JobEdge 等，并尽可能地将多个节点 chain 在一起
 		setChaining(hashes, legacyHashes);
-
+		//herycode 将每个 JobVertex 的入边集合也序列化到该 JobVertex 的 StreamConfig 中
+		// (出边集合已经在 setChaining 的时候写入了)
 		setPhysicalEdges();
-
+		//herycode 根据 group name，为每个 JobVertex 指定所属的 SlotSharingGroup
+		// 以及针对 Iteration 的头尾设置 CoLocationGroup
 		setSlotSharingAndCoLocation();
 
 		setManagedMemoryFraction(
@@ -322,7 +329,10 @@ public class StreamingJobGraphGenerator {
 		final Collection<OperatorChainInfo> initialEntryPoints = new ArrayList<>(chainEntryPoints.values());
 
 		// iterate over a copy of the values, because this map gets concurrently modified
+		// HeryCode:从source开始建立 node chains
 		for (OperatorChainInfo info : initialEntryPoints) {
+			//herycode  构建 node chains，返回当前节点的物理出边
+			// startNodeId != currentNodeId 时,说明 currentNode 是 chain 中的子节点
 			createChain(
 					info.getStartNodeId(),
 					1,  // operators start at position 1 because 0 is for chained source inputs
@@ -339,14 +349,14 @@ public class StreamingJobGraphGenerator {
 
 		Integer startNodeId = chainInfo.getStartNodeId();
 		if (!builtVertices.contains(startNodeId)) {
-
+			//herycode 过渡用的出边集合, 用来生成最终的 JobEdge, 注意不包括 chain 内部的边
 			List<StreamEdge> transitiveOutEdges = new ArrayList<StreamEdge>();
 
 			List<StreamEdge> chainableOutputs = new ArrayList<StreamEdge>();
 			List<StreamEdge> nonChainableOutputs = new ArrayList<StreamEdge>();
 
 			StreamNode currentNode = streamGraph.getStreamNode(currentNodeId);
-
+			//herycode	 将当前节点的出边分成 chainable 和 nonChainable 两类
 			for (StreamEdge outEdge : currentNode.getOutEdges()) {
 				if (isChainable(outEdge, streamGraph)) {
 					chainableOutputs.add(outEdge);
@@ -354,7 +364,7 @@ public class StreamingJobGraphGenerator {
 					nonChainableOutputs.add(outEdge);
 				}
 			}
-
+			// 递归调用
 			for (StreamEdge chainable : chainableOutputs) {
 				transitiveOutEdges.addAll(
 						createChain(chainable.getTargetId(), chainIndex + 1, chainInfo, chainEntryPoints));
@@ -370,7 +380,7 @@ public class StreamingJobGraphGenerator {
 							(k) -> chainInfo.newChain(nonChainable.getTargetId())),
 						chainEntryPoints);
 			}
-
+			//herycode 生成当前节点的显示名，如："Keyed Aggregation -> Sink: Unnamed"
 			chainedNames.put(currentNodeId, createChainedName(currentNodeId, chainableOutputs, Optional.ofNullable(chainEntryPoints.get(currentNodeId))));
 			chainedMinResources.put(currentNodeId, createChainedMinResources(currentNodeId, chainableOutputs));
 			chainedPreferredResources.put(currentNodeId, createChainedPreferredResources(currentNodeId, chainableOutputs));
@@ -384,32 +394,40 @@ public class StreamingJobGraphGenerator {
 			if (currentNode.getOutputFormat() != null) {
 				getOrCreateFormatContainer(startNodeId).addOutputFormat(currentOperatorId, currentNode.getOutputFormat());
 			}
-
+			//herycode 如果当前节点是起始节点, 则直接创建 JobVertex 并返回 StreamConfig, 否则先创建一个空的 StreamConfig
+			// createJobVertex 函数就是根据 StreamNode 创建对应的 JobVertex, 并返回了空的StreamConfig
 			StreamConfig config = currentNodeId.equals(startNodeId)
 					? createJobVertex(startNodeId, chainInfo)
 					: new StreamConfig(new Configuration());
-
+			//herycode 设 置 JobVertex 的 StreamConfig, 基本上是序列化 StreamNode 中的配置到StreamConfig 中
+			// 其中包括 序列化器, StreamOperator, Checkpoint 等相关配置
 			setVertexConfig(currentNodeId, config, chainableOutputs, nonChainableOutputs, chainInfo.getChainedSources());
 
 			if (currentNodeId.equals(startNodeId)) {
-
+				//herycode 如果是 chain 的起始节点。（不是 chain 中的节点，也会被标记成 chain start）
 				config.setChainStart();
 				config.setChainIndex(chainIndex);
 				config.setOperatorName(streamGraph.getStreamNode(currentNodeId).getOperatorName());
-
+				//herycode 将当前节点(headOfChain)与所有出边相连
 				for (StreamEdge edge : transitiveOutEdges) {
+					//herycode 通过 StreamEdge 构建出 JobEdge，创建 IntermediateDataSet，
+					// 用来将 JobVertex 和 JobEdge 相连
 					connect(startNodeId, edge);
 				}
-
+				//herycode 把物理出边写入配置, 部署时会用到
 				config.setOutEdgesInOrder(transitiveOutEdges);
+				//herycode 将 chain 中所有子节点的 StreamConfig
+				// 写入到 headOfChain 节点的 CHAINED_TASK_CONFIG 配置中
 				config.setTransitiveChainedTaskConfigs(chainedConfigs.get(startNodeId));
 
 			} else {
+				//herycode 如果是 chain 中的子节点
 				chainedConfigs.computeIfAbsent(startNodeId, k -> new HashMap<Integer, StreamConfig>());
 
 				config.setChainIndex(chainIndex);
 				StreamNode node = streamGraph.getStreamNode(currentNodeId);
 				config.setOperatorName(node.getOperatorName());
+				//herycode 将当前节点的 StreamConfig 添加到该 chain 的 config 集合中
 				chainedConfigs.get(startNodeId).put(currentNodeId, config);
 			}
 
@@ -418,8 +436,8 @@ public class StreamingJobGraphGenerator {
 			if (chainableOutputs.isEmpty()) {
 				config.setChainEnd();
 			}
+			// 返回连往 chain 外部的出边集合
 			return transitiveOutEdges;
-
 		} else {
 			return new ArrayList<>();
 		}

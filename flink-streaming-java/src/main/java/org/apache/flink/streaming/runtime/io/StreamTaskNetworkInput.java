@@ -149,6 +149,7 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
 				}
 
 				if (result.isFullRecord()) {
+					// HeryCode:核心逻辑 处理元素
 					processElement(deserializationDelegate.getInstance(), output);
 					return InputStatus.MORE_AVAILABLE;
 				}
@@ -175,7 +176,9 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
 	}
 
 	private void processElement(StreamElement recordOrMark, DataOutput<T> output) throws Exception {
+		// HeryCode:如果是数据
 		if (recordOrMark.isRecord()){
+			// HeryCode:,比如map算子，emitRecord应该在OneInputStreamTask.java中调用
 			output.emitRecord(recordOrMark.asRecord());
 		} else if (recordOrMark.isWatermark()) {
 			statusWatermarkValve.inputWatermark(recordOrMark.asWatermark(), lastChannel, output);

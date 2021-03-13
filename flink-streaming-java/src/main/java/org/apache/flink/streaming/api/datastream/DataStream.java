@@ -592,7 +592,7 @@ public class DataStream<T> {
 
 		TypeInformation<R> outType = TypeExtractor.getMapReturnTypes(clean(mapper), getType(),
 				Utils.getCallLocationName(), true);
-
+		// HeryCode:map 算子执行过程
 		return map(mapper, outType);
 	}
 
@@ -1252,7 +1252,8 @@ public class DataStream<T> {
 
 		// read the output type of the input Transform to coax out errors about MissingTypeInfo
 		transformation.getOutputType();
-
+		// HeryCode:定义一个 Transformation 这是是OneInputTransformation
+		// 新的 transformation 会连接上当前 DataStream 中的 transformation，从而构建成一棵树
 		OneInputTransformation<T, R> resultTransform = new OneInputTransformation<>(
 				this.transformation,
 				operatorName,
@@ -1262,7 +1263,8 @@ public class DataStream<T> {
 
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		SingleOutputStreamOperator<R> returnStream = new SingleOutputStreamOperator(environment, resultTransform);
-
+		// HeryCode:将定义的 Transformation 放入到env  的Transformation list中
+		// 所有的 transformation 都会存到 env 中，调用 execute 时遍历该 list 生成 StreamGraph
 		getExecutionEnvironment().addOperator(resultTransform);
 
 		return returnStream;

@@ -167,6 +167,7 @@ public class ExecutionGraphBuilder {
 			PartitionReleaseStrategyFactoryLoader.loadPartitionReleaseStrategyFactory(jobManagerConfig);
 
 		// create a new execution graph, if none exists so far
+		//HeryCode 如果不存在执行图，就创建一个新的执行图
 		final ExecutionGraph executionGraph;
 		try {
 			executionGraph = (prior != null) ? prior :
@@ -211,13 +212,14 @@ public class ExecutionGraphBuilder {
 		log.info("Running initialization on master for job {} ({}).", jobName, jobId);
 
 		for (JobVertex vertex : jobGraph.getVertices()) {
+			//herycode  获取作业图中的每个节点的执行类，检查ḕ下有没有没有执行类的节点，防御式编程
 			String executableClass = vertex.getInvokableClassName();
 			if (executableClass == null || executableClass.isEmpty()) {
 				throw new JobSubmissionException(jobId,
 						"The vertex " + vertex.getID() + " (" + vertex.getName() + ") has no invokable class.");
 			}
-
 			try {
+				// 设置好每个节点的类加载器
 				vertex.initializeOnMaster(classLoader);
 			}
 			catch (Throwable t) {
@@ -230,10 +232,12 @@ public class ExecutionGraphBuilder {
 				(System.nanoTime() - initMasterStart) / 1_000_000);
 
 		// topologically sort the job vertices and attach the graph to the existing one
+		//herycode 对 JobGraph 进行拓扑排序，获取所有的 JobVertex 列表
 		List<JobVertex> sortedTopology = jobGraph.getVerticesSortedTopologicallyFromSources();
 		if (log.isDebugEnabled()) {
 			log.debug("Adding {} vertices from job graph {} ({}).", sortedTopology.size(), jobName, jobId);
 		}
+		//herycode 核心逻辑：将拓扑排序过的 JobGraph 添加到 executionGraph 数据结构中。
 		executionGraph.attachJobGraph(sortedTopology);
 
 		if (log.isDebugEnabled()) {

@@ -733,7 +733,9 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 					entry.getValue().getOutputRescalingDescriptor().equals(InflightDataRescalingDescriptor.NO_RESCALE)),
 					"Rescaling from unaligned checkpoint is not yet supported.");
 			}
-
+			//HeryCode: 包含了从 Execution Graph 到真正物理执行图的转换。
+			// 比如将 IntermediateResultPartition 转化成 ResultPartition，
+			// ExecutionEdge 转成 InputChannelDeploymentDescriptor（最终会在执行时转化成 InputGate）
 			final TaskDeploymentDescriptor deployment = TaskDeploymentDescriptorFactory
 				.fromExecutionVertex(vertex, attemptNumber)
 				.createDeploymentDescriptor(
@@ -753,6 +755,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			getVertex().notifyPendingDeployment(this);
 			// We run the submission in the future executor so that the serialization of large TDDs does not block
 			// the main thread and sync back to the main thread once submission is completed.
+			// HeryCode:提交Task执行 submitTask
 			CompletableFuture.supplyAsync(() -> taskManagerGateway.submitTask(deployment, rpcTimeout), executor)
 				.thenCompose(Function.identity())
 				.whenCompleteAsync(

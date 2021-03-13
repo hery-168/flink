@@ -289,6 +289,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		this.configuration = new StreamConfig(getTaskConfiguration());
 		this.recordWriter = createRecordWriterDelegate(configuration, environment);
 		this.actionExecutor = Preconditions.checkNotNull(actionExecutor);
+		// HeryCode:构造器
 		this.mailboxProcessor = new MailboxProcessor(this::processInput, mailbox, actionExecutor);
 		this.mailboxProcessor.initMetric(environment.getMetricGroup());
 		this.mainMailboxExecutor = mailboxProcessor.getMainMailboxExecutor();
@@ -369,6 +370,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	 * @throws Exception on any problems in the action.
 	 */
 	protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
+		// HeryCode:调用processInput
 		InputStatus status = inputProcessor.processInput();
 		if (status == InputStatus.MORE_AVAILABLE && recordWriter.isAvailable()) {
 			return;
@@ -528,6 +530,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	@Override
 	public final void invoke() throws Exception {
 		try {
+			// HeryCode:调用前的准备工作，如初始化等
 			beforeInvoke();
 
 			// final check to exit early before starting to run
@@ -536,6 +539,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 
 			// let the task do its work
+			// HeryCode:核心逻辑，执行任务
 			runMailboxLoop();
 
 			// if this left the run() method cleanly despite the fact that this was canceled,
@@ -543,7 +547,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			if (canceled) {
 				throw new CancelTaskException();
 			}
-
+			// HeryCode:调用后的一些工作，如资源回收
 			afterInvoke();
 		}
 		catch (Throwable invokeException) {

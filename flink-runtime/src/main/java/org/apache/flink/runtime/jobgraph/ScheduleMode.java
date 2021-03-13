@@ -23,6 +23,7 @@ package org.apache.flink.runtime.jobgraph;
  */
 public enum ScheduleMode {
 	/** Schedule tasks lazily from the sources. Downstream tasks are started once their input data are ready */
+	// HeryCode:用于批处理
 	LAZY_FROM_SOURCES(true),
 
 	/**
@@ -30,9 +31,11 @@ public enum ScheduleMode {
 	 * execution of jobs with fewer slots than requested. However, the user needs to make sure that the job
 	 * does not contain any pipelined shuffles (every pipelined region can be executed with a single slot).
 	 */
+// HeryCode:和上面区别是在该模式下，使用批处理资源申请模式，可以在资源不足的情况下执行作业，但要确保本阶段作业中没有shuffle
 	LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST(true),
 
 	/** Schedules all tasks immediately. */
+	// HeryCode:用于流计算，一次申请需要的所有资源
 	EAGER(false);
 
 	private final boolean allowLazyDeployment;

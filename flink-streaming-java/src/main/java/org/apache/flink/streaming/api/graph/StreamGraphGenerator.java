@@ -255,8 +255,9 @@ public class StreamGraphGenerator {
 		configureStreamGraph(streamGraph);
 
 		alreadyTransformed = new HashMap<>();
-
+		// HeryCode:transformations是一个list， 存放了我们代码的算子
 		for (Transformation<?> transformation: transformations) {
+			// HeryCode: 执行transform
 			transform(transformation);
 		}
 
@@ -386,6 +387,7 @@ public class StreamGraphGenerator {
 
 		Collection<Integer> transformedIds;
 		if (translator != null) {
+			// HeryCode: 执行translate
 			transformedIds = translate(translator, transform);
 		} else {
 			transformedIds = legacyTransform(transform);
@@ -623,7 +625,7 @@ public class StreamGraphGenerator {
 
 		final TransformationTranslator.Context context = new ContextImpl(
 				this, streamGraph, slotSharingGroup, configuration);
-
+		// HeryCode:判断是否为批模式
 		return shouldExecuteInBatchMode
 				? translator.translateForBatch(transform, context)
 				: translator.translateForStreaming(transform, context);

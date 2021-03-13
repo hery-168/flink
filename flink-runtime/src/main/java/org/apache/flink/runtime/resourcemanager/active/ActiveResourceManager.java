@@ -229,6 +229,7 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
 	// ------------------------------------------------------------------------
 
 	private void requestNewWorker(WorkerResourceSpec workerResourceSpec) {
+		// HeryCode:申请 计算 TaskManager 内存
 		final TaskExecutorProcessSpec taskExecutorProcessSpec =
 				TaskExecutorProcessUtils.processSpecFromWorkerResourceSpec(flinkConfig, workerResourceSpec);
 		final int pendingCount = pendingWorkerCounter.increaseAndGet(workerResourceSpec);

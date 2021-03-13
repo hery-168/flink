@@ -997,7 +997,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 				localizedKeytabPath = flinkConfiguration.getString(YarnConfigOptions.LOCALIZED_KEYTAB_PATH);
 			}
 		}
-
+		// HeryCode:JobManager 的内存配置
 		final JobManagerProcessSpec processSpec = JobManagerProcessUtils.processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
 			flinkConfiguration,
 			JobManagerOptions.TOTAL_PROCESS_MEMORY);

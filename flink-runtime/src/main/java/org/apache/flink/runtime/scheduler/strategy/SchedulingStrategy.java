@@ -30,6 +30,7 @@ import java.util.Set;
  * It can react to execution state changes and partition consumable events.
  * Moreover, it is responsible for resolving task failures.
  */
+// HeryCode:调度策略
 public interface SchedulingStrategy {
 
 	/**

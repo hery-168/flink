@@ -307,6 +307,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		this.shuffleMaster = checkNotNull(shuffleMaster);
 
 		this.jobManagerJobMetricGroup = jobMetricGroupFactory.create(jobGraph);
+		// HeryCode:创建调度器，创建的时候把jobgraph 转换为ExecutionGraph
 		this.schedulerNG = createScheduler(executionDeploymentTracker, jobManagerJobMetricGroup);
 		this.jobStatusListener = null;
 
@@ -917,7 +918,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		validateRunsInMainThread();
 
 		final CompletableFuture<Void> schedulerAssignedFuture;
-
+		// HeryCode:判断作业状态
 		if (schedulerNG.requestJobStatus() == JobStatus.CREATED) {
 			schedulerAssignedFuture = CompletableFuture.completedFuture(null);
 			schedulerNG.setMainThreadExecutor(getMainThreadExecutor());
@@ -934,7 +935,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 				}
 			);
 		}
-
+		// HeryCode:startScheduling 核心方法
 		FutureUtils.assertNoException(schedulerAssignedFuture.thenRun(this::startScheduling));
 	}
 
@@ -943,7 +944,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 		// register self as job status change listener
 		jobStatusListener = new JobManagerJobStatusListener();
 		schedulerNG.registerJobStatusListener(jobStatusListener);
-
+		// HeryCode: 开始调度
 		schedulerNG.startScheduling();
 	}
 

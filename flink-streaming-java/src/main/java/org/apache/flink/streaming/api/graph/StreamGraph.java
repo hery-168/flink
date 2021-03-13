@@ -505,7 +505,7 @@ public class StreamGraph implements Pipeline {
 			List<String> outputNames,
 			OutputTag outputTag,
 			ShuffleMode shuffleMode) {
-
+		//HeryCode:  当上游是侧输出时，递归调用，并传入侧输出信息
 		if (virtualSideOutputNodes.containsKey(upStreamVertexID)) {
 			int virtualId = upStreamVertexID;
 			upStreamVertexID = virtualSideOutputNodes.get(virtualId).f0;
@@ -513,7 +513,9 @@ public class StreamGraph implements Pipeline {
 				outputTag = virtualSideOutputNodes.get(virtualId).f1;
 			}
 			addEdgeInternal(upStreamVertexID, downStreamVertexID, typeNumber, partitioner, null, outputTag, shuffleMode);
+
 		} else if (virtualPartitionNodes.containsKey(upStreamVertexID)) {
+			//HeryCode 当上游是 partition 时，递归调用，并传入 partitioner 信息
 			int virtualId = upStreamVertexID;
 			upStreamVertexID = virtualPartitionNodes.get(virtualId).f0;
 			if (partitioner == null) {
@@ -522,17 +524,19 @@ public class StreamGraph implements Pipeline {
 			shuffleMode = virtualPartitionNodes.get(virtualId).f2;
 			addEdgeInternal(upStreamVertexID, downStreamVertexID, typeNumber, partitioner, outputNames, outputTag, shuffleMode);
 		} else {
+			//HeryCode 真正构建 StreamEdge
 			StreamNode upstreamNode = getStreamNode(upStreamVertexID);
 			StreamNode downstreamNode = getStreamNode(downStreamVertexID);
 
 			// If no partitioner was specified and the parallelism of upstream and downstream
 			// operator matches use forward partitioning, use rebalance otherwise.
+			//HeryCode  未指定 partitioner 的话，会为其选择 forward 或 rebalance 分区。
 			if (partitioner == null && upstreamNode.getParallelism() == downstreamNode.getParallelism()) {
 				partitioner = new ForwardPartitioner<Object>();
 			} else if (partitioner == null) {
 				partitioner = new RebalancePartitioner<Object>();
 			}
-
+			//HeryCode 健康检查，forward 分区必须要上下游的并发度一致
 			if (partitioner instanceof ForwardPartitioner) {
 				if (upstreamNode.getParallelism() != downstreamNode.getParallelism()) {
 					throw new UnsupportedOperationException("Forward partitioning does not allow " +
@@ -545,10 +549,10 @@ public class StreamGraph implements Pipeline {
 			if (shuffleMode == null) {
 				shuffleMode = ShuffleMode.UNDEFINED;
 			}
-
+			//HeryCode 创建 StreamEdge
 			StreamEdge edge = new StreamEdge(upstreamNode, downstreamNode, typeNumber,
 				partitioner, outputTag, shuffleMode);
-
+			//herycode 将该 StreamEdge 添加到上游的输出，下游的输入
 			getStreamNode(edge.getSourceId()).addOutEdge(edge);
 			getStreamNode(edge.getTargetId()).addInEdge(edge);
 		}

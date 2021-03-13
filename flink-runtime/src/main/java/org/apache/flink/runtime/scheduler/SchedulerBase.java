@@ -234,7 +234,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 		this.slotRequestTimeout = checkNotNull(slotRequestTimeout);
 		this.executionVertexVersioner = checkNotNull(executionVertexVersioner);
 		this.legacyScheduling = legacyScheduling;
-
+		// HeryCode:创建ExecutionGraph
 		this.executionGraph = createAndRestoreExecutionGraph(jobManagerJobMetricGroup, checkNotNull(shuffleMaster), checkNotNull(partitionTracker), checkNotNull(executionDeploymentTracker), initializationTimestamp);
 
 		this.schedulingTopology = executionGraph.getSchedulingTopology();
@@ -252,7 +252,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 		JobMasterPartitionTracker partitionTracker,
 		ExecutionDeploymentTracker executionDeploymentTracker,
 		long initializationTimestamp) throws Exception {
-
+		// HeryCode:创建ExecutionGraph
 		ExecutionGraph newExecutionGraph = createExecutionGraph(currentJobManagerJobMetricGroup, shuffleMaster, partitionTracker, executionDeploymentTracker, initializationTimestamp);
 
 		final CheckpointCoordinator checkpointCoordinator = newExecutionGraph.getCheckpointCoordinator();
@@ -287,7 +287,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 		final FailoverStrategy.Factory failoverStrategy = legacyScheduling ?
 			FailoverStrategyLoader.loadFailoverStrategy(jobMasterConfiguration, log) :
 			new NoOpFailoverStrategy.Factory();
-
+		// HeryCode:构建ExecutionGraph
 		return ExecutionGraphBuilder.buildGraph(
 			null,
 			jobGraph,
@@ -565,6 +565,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 		mainThreadExecutor.assertRunningInMainThread();
 		registerJobMetrics();
 		startAllOperatorCoordinators();
+		// HeryCode:启动调度
 		startSchedulingInternal();
 	}
 

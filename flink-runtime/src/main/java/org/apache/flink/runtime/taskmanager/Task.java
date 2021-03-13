@@ -535,6 +535,7 @@ public class Task implements Runnable, TaskSlotPayload, TaskActions, PartitionPr
 	 * Starts the task's thread.
 	 */
 	public void startTaskThread() {
+		// HeryCode:执行task线程，调用Task的run方法，然后调用doRun方法
 		executingThread.start();
 	}
 
@@ -697,6 +698,7 @@ public class Task implements Runnable, TaskSlotPayload, TaskActions, PartitionPr
 			executingThread.setContextClassLoader(userCodeClassLoader.asClassLoader());
 
 			// now load and instantiate the task's invokable code
+			// HeryCode:加载和实例化task的可执行代码
 			invokable = loadAndInstantiateInvokable(userCodeClassLoader.asClassLoader(), nameOfInvokableClass, env);
 
 			// ----------------------------------------------------------------
@@ -719,6 +721,7 @@ public class Task implements Runnable, TaskSlotPayload, TaskActions, PartitionPr
 			executingThread.setContextClassLoader(userCodeClassLoader.asClassLoader());
 
 			// run the invokable
+			// HeryCode:执行代码，invokable即为operator，如StreamTask BatchTask  DataSinkTask 等
 			invokable.invoke();
 
 			// make sure, we enter the catch block if the task leaves the invoke() method due

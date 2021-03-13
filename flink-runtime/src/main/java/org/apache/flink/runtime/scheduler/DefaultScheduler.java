@@ -130,7 +130,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 		final ExecutionSlotAllocatorFactory executionSlotAllocatorFactory,
 		final ExecutionDeploymentTracker executionDeploymentTracker,
 		long initializationTimestamp) throws Exception {
-
+		// HeryCode:进入super方法，查看父类的构造
 		super(
 			log,
 			jobGraph,
@@ -196,6 +196,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 	protected void startSchedulingInternal() {
 		log.info("Starting scheduling with scheduling strategy [{}]", schedulingStrategy.getClass().getName());
 		prepareExecutionGraphForNgScheduling();
+		// HeryCode:调度策略启动调度，新版1.12 默认调度策略是PiplineRegion
 		schedulingStrategy.startScheduling();
 	}
 
@@ -347,7 +348,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 			requiredVersionByVertex,
 			deploymentOptionsByVertex,
 			slotExecutionVertexAssignments);
-
+		// HeryCode:等待所有slot的分配，然后进行部署
 		waitForAllSlotsAndDeploy(deploymentHandles);
 	}
 
@@ -417,7 +418,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 				final SlotExecutionVertexAssignment slotExecutionVertexAssignment = deploymentHandle.getSlotExecutionVertexAssignment();
 				final CompletableFuture<LogicalSlot> slotAssigned = slotExecutionVertexAssignment.getLogicalSlotFuture();
 				checkState(slotAssigned.isDone());
-
+				// HeryCode:deployOrHandleError 开始部署 或者处理异常
 				FutureUtils.assertNoException(
 					slotAssigned.handle(deployOrHandleError(deploymentHandle)));
 			}
@@ -489,6 +490,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 			}
 
 			if (throwable == null) {
+				// HeryCode:部署task
 				deployTaskSafe(executionVertexId);
 			} else {
 				handleTaskDeploymentFailure(executionVertexId, throwable);
@@ -499,7 +501,9 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 
 	private void deployTaskSafe(final ExecutionVertexID executionVertexId) {
 		try {
+			// HeryCode:通过执行图的节点ID获取执行图节点
 			final ExecutionVertex executionVertex = getExecutionVertex(executionVertexId);
+			// HeryCode:部署执行图节点
 			executionVertexOperations.deploy(executionVertex);
 		} catch (Throwable e) {
 			handleTaskDeploymentFailure(executionVertexId, e);

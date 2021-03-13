@@ -38,6 +38,9 @@ public class StreamMap<IN, OUT>
 
 	@Override
 	public void processElement(StreamRecord<IN> element) throws Exception {
+		// HeryCode:userFunction.map 就是用户定义的MapFunction 里的map方法，
+		// 这里element.replace(userFunction.map(element.getValue())) 就是把每个元素用map函数处理，然后把元素element替换了
+		// 最后通过collect发送到下游
 		output.collect(element.replace(userFunction.map(element.getValue())));
 	}
 }

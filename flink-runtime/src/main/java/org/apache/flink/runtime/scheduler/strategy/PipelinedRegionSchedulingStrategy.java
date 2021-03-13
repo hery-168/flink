@@ -88,6 +88,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 			.toStream(schedulingTopology.getAllPipelinedRegions())
 			.filter(region -> !region.getConsumedResults().iterator().hasNext())
 			.collect(Collectors.toSet());
+		// HeryCode:
 		maybeScheduleRegions(sourceRegions);
 	}
 
@@ -124,6 +125,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 		final List<SchedulingPipelinedRegion> regionsSorted =
 			SchedulingStrategyUtils.sortPipelinedRegionsInTopologicalOrder(schedulingTopology, regions);
 		for (SchedulingPipelinedRegion region : regionsSorted) {
+			// HeryCode: 调度局部region
 			maybeScheduleRegion(region);
 		}
 	}
@@ -139,6 +141,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 			SchedulingStrategyUtils.createExecutionVertexDeploymentOptions(
 				regionVerticesSorted.get(region),
 				id -> deploymentOption);
+		// HeryCode:分配slot 并进行部署
 		schedulerOperations.allocateSlotsAndDeploy(vertexDeploymentOptions);
 	}
 

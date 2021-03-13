@@ -1993,6 +1993,7 @@ public class StreamExecutionEnvironment {
 	 */
 	@Internal
 	public StreamGraph getStreamGraph(String jobName, boolean clearTransformations) {
+		// HeryCode: 生成 StreamGraph generate()
 		StreamGraph streamGraph = getStreamGraphGenerator().setJobName(jobName).generate();
 		if (clearTransformations) {
 			this.transformations.clear();

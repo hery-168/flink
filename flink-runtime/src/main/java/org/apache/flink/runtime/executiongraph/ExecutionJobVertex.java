@@ -393,13 +393,13 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 	//---------------------------------------------------------------------------------------------
 
 	public void connectToPredecessors(Map<IntermediateDataSetID, IntermediateResult> intermediateDataSets) throws JobException {
-
+		//herycode 获取输入的 JobEdge 列表
 		List<JobEdge> inputs = jobVertex.getInputs();
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug(String.format("Connecting ExecutionJobVertex %s (%s) to %d predecessors.", jobVertex.getID(), jobVertex.getName(), inputs.size()));
 		}
-
+		// 遍历每条 JobEdge
 		for (int num = 0; num < inputs.size(); num++) {
 			JobEdge edge = inputs.get(num);
 
@@ -415,18 +415,25 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 
 			// fetch the intermediate result via ID. if it does not exist, then it either has not been created, or the order
 			// in which this method is called for the job vertices is not a topological order
+			//herycode 获取当前 JobEdge 的输入所对应的 IntermediateResult
+			// 通过 ID 获取中间结果。如果中间结果不存在，那么或者中间结果没有被创建。
+			// 或者 JobVertex 没有进䘋拓扑排序。
 			IntermediateResult ires = intermediateDataSets.get(edge.getSourceId());
 			if (ires == null) {
 				throw new JobException("Cannot connect this job graph to the previous graph. No previous intermediate result found for ID "
 						+ edge.getSourceId());
 			}
-
+			// 将 IntermediateResult 加入到当前 ExecutionJobVertex 的输入中。
 			this.inputs.add(ires);
-
+			// 为中间结果注册消费者，这样中间结果的消费又多了一个（就是当前节点）
+			// 为 IntermediateResult 注册 consumer
+			// consumerIndex 跟 IntermediateResult 的出度相关
 			int consumerIndex = ires.registerConsumer();
 
 			for (int i = 0; i < parallelism; i++) {
+				// 由于每一个并行度都对应一个节点。所以要把每个节点都和前面中间结果相连。
 				ExecutionVertex ev = taskVertices[i];
+				// 将 ExecutionVertex 与 IntermediateResult 关联起来
 				ev.connectSource(num, ires, edge, consumerIndex);
 			}
 		}

@@ -56,6 +56,7 @@ public abstract class SimpleTransformationTranslator<OUT, T extends Transformati
 		checkNotNull(context);
 
 		final Collection<Integer> transformedIds =
+			// HeryCode:执行 translateForStreamingInternal
 				translateForStreamingInternal(transformation, context);
 		configure(transformation, context);
 
@@ -82,6 +83,8 @@ public abstract class SimpleTransformationTranslator<OUT, T extends Transformati
 	 * to this transformation. These will be the nodes that a potential following transformation will need to
 	 * connect to.
 	 */
+	// HeryCode:抽象方法，看实现类，map fliter flatmap 等算子的实现类是 AbstractOneInputTransformationTranslator
+	// keyby union connect 等算子是PartitionTransformationTranslator
 	protected abstract Collection<Integer> translateForStreamingInternal(final T transformation, final Context context);
 
 	private void configure(final T transformation, final Context context) {

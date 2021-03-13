@@ -508,7 +508,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 	// ----------------------------------------------------------------------
 	// Task lifecycle RPCs
 	// ----------------------------------------------------------------------
-
+	// HeryCode:核心方法  提交task执行
 	@Override
 	public CompletableFuture<Acknowledge> submitTask(
 			TaskDeploymentDescriptor tdd,
@@ -615,7 +615,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 			} catch (SlotNotFoundException e) {
 				throw new TaskSubmissionException("Could not submit task.", e);
 			}
-
+			// HeryCode: new 一个task，里面封装各种信息
 			Task task = new Task(
 				jobInformation,
 				taskInformation,
@@ -661,6 +661,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 			}
 
 			if (taskAdded) {
+				// HeryCode:启动task的线程，在slot上执行
 				task.startTaskThread();
 
 				setupResultPartitionBookkeeping(

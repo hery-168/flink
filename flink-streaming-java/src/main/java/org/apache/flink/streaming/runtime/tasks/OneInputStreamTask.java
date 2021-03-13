@@ -190,6 +190,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 		public void emitRecord(StreamRecord<IN> record) throws Exception {
 			numRecordsIn.inc();
 			operator.setKeyContextElement1(record);
+			// HeryCode:如果是map算子，processElement 应该在StreamMap.java中调用
 			operator.processElement(record);
 		}
 

@@ -178,11 +178,12 @@ public class MailboxProcessor implements Closeable {
 		assert localMailbox.getState() == TaskMailbox.State.OPEN : "Mailbox must be opened!";
 
 		final MailboxController defaultActionContext = new MailboxController(this);
-
+		// HeryCode:如果Mailbox里有，就进行处理，mail就类似flink中的map，filter等任务
 		while (isMailboxLoopRunning()) {
 			// The blocking `processMail` call will not return until default action is available.
 			processMail(localMailbox, false);
 			if (isMailboxLoopRunning()) {
+				// HeryCode: 邮箱默认操作在StreamTask的构造器中指定，为processiinput()
 				mailboxDefaultAction.runDefaultAction(defaultActionContext); // lock is acquired inside default action as needed
 			}
 		}
