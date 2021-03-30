@@ -185,6 +185,7 @@ public class SqlToOperationConverter {
 	 * @param catalogManager CatalogManager to resolve full path for operations
 	 * @param sqlNode SqlNode to execute on
 	 */
+	// HeryCode:根据执行计划和catalog等，生成响应的表操作Operation
 	public static Optional<Operation> convert(
 			FlinkPlannerImpl flinkPlanner,
 			CatalogManager catalogManager,
@@ -192,6 +193,8 @@ public class SqlToOperationConverter {
 		// validate the query
 		final SqlNode validated = flinkPlanner.validate(sqlNode);
 		SqlToOperationConverter converter = new SqlToOperationConverter(flinkPlanner, catalogManager);
+		// HeryCode:核心点
+		//  判断是属于哪种操作 包含catalog、db、table、view、function、partition、explain、desc、inert、query等操作
 		if (validated instanceof SqlCreateCatalog) {
 			return Optional.of(converter.convertCreateCatalog((SqlCreateCatalog) validated));
 		} else if (validated instanceof SqlDropCatalog) {
@@ -246,7 +249,7 @@ public class SqlToOperationConverter {
 			return Optional.of(converter.convertDescribeTable((SqlRichDescribeTable) validated));
 		} else if (validated instanceof RichSqlInsert) {
 			return Optional.of(converter.convertSqlInsert((RichSqlInsert) validated));
-		} else if (validated.getKind().belongsTo(SqlKind.QUERY)) {
+		} else if (validated.getKind().belongsTo(SqlKind.QUERY)) {// HeryCode:查询类操作
 			return Optional.of(converter.convertSqlQuery(validated));
 		} else {
 			return Optional.empty();

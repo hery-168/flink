@@ -636,6 +636,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
 
 	@Override
 	public Table sqlQuery(String query) {
+		// HeryCode: 通过calcite 解析查询的sql语句，生成Operation
 		List<Operation> operations = parser.parse(query);
 
 		if (operations.size() != 1) {
@@ -646,6 +647,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
 		Operation operation = operations.get(0);
 
 		if (operation instanceof QueryOperation && !(operation instanceof ModifyOperation)) {
+			// HeryCode:生成表
 			return createTable((QueryOperation) operation);
 		} else {
 			throw new ValidationException(

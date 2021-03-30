@@ -67,26 +67,29 @@ public class ParserImpl implements Parser {
 		this.calciteParserSupplier = calciteParserSupplier;
 		this.sqlExprToRexConverterCreator = sqlExprToRexConverterCreator;
 	}
-
+	// HeryCode:解析 sql 语句 返回操作列表
 	@Override
 	public List<Operation> parse(String statement) {
+		// HeryCode:获取解析器
 		CalciteParser parser = calciteParserSupplier.get();
+		// HeryCode:获取flink sql 的planner
 		FlinkPlannerImpl planner = validatorSupplier.get();
 		// parse the sql query
+		// HeryCode:解析sql 语句生成SqlNode，也就是sql 解析树
 		SqlNode parsed = parser.parse(statement);
-
+		// HeryCode:通过执行计划，catalog、sql树 生成Operation，Operation是一个接口，这里指的是查询类操作QueryOperation 的实现
 		Operation operation = SqlToOperationConverter.convert(planner, catalogManager, parsed)
 			.orElseThrow(() -> new TableException("Unsupported query: " + statement));
 		return Collections.singletonList(operation);
 	}
-
+	// HeryCode: 解析标识符
 	@Override
 	public UnresolvedIdentifier parseIdentifier(String identifier) {
 		CalciteParser parser = calciteParserSupplier.get();
 		SqlIdentifier sqlIdentifier = parser.parseIdentifier(identifier);
 		return UnresolvedIdentifier.of(sqlIdentifier.names);
 	}
-
+	// HeryCode:解析sql 异常
 	@Override
 	public ResolvedExpression parseSqlExpression(String sqlExpression, TableSchema inputSchema) {
 		SqlExprToRexConverter sqlExprToRexConverter = sqlExprToRexConverterCreator.apply(inputSchema);

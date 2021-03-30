@@ -96,6 +96,7 @@ public class TableImpl implements Table {
 			QueryOperation operationTree,
 			OperationTreeBuilder operationTreeBuilder,
 			FunctionLookup functionLookup) {
+		// HeryCode:返回
 		return new TableImpl(
 			tableEnvironment,
 			operationTree,

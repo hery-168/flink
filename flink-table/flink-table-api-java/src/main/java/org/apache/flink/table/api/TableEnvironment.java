@@ -840,6 +840,7 @@ public interface TableEnvironment {
 	 * @param query The SQL query to evaluate.
 	 * @return The result of the query as Table
 	 */
+	// HeryCode: 在一个已经注册的表上进行一个查询操作 ，底层通过不同的planner 进行解析翻译
 	Table sqlQuery(String query);
 
 	/**
