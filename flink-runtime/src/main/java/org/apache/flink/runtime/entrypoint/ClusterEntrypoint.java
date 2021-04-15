@@ -206,7 +206,9 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 
 		return SecurityUtils.getInstalledContext();
 	}
+
 	// HeryCode: 运行集群
+
 	private void runCluster(Configuration configuration, PluginManager pluginManager) throws Exception {
 
 		synchronized (lock) {

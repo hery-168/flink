@@ -31,6 +31,7 @@ public interface CustomCommandLine {
 
 	/**
 	 * Signals whether the custom command-line wants to execute or not.
+	 * 指示自定义命令行是否要执行
 	 * @param commandLine The command-line options
 	 * @return True if the command-line wants to run, False otherwise
 	 */

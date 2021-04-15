@@ -504,6 +504,7 @@ public class CliFrontendParser {
 	// --------------------------------------------------------------------------------------------
 
 	public static CommandLine parse(Options options, String[] args, boolean stopAtNonOptions) throws CliArgsException {
+		// stopAtNonOptions = true; shell->run
 		final DefaultParser parser = new DefaultParser();
 
 		try {

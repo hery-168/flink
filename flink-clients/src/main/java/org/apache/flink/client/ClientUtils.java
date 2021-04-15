@@ -86,10 +86,11 @@ public enum ClientUtils {
 			PipelineExecutorServiceLoader executorServiceLoader,
 			Configuration configuration,
 			PackagedProgram program,
-			boolean enforceSingleJobExecution,
-			boolean suppressSysout) throws ProgramInvocationException {
-		checkNotNull(executorServiceLoader);
+			boolean enforceSingleJobExecution, //false
+			boolean suppressSysout) throws ProgramInvocationException { //false
+		checkNotNull(executorServiceLoader);// new DefaultExecutorServiceLoader();
 		final ClassLoader userCodeClassLoader = program.getUserCodeClassLoader();
+		//ClientUtils.buildUserCodeClassLoader()
 		final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
 		try {
 			Thread.currentThread().setContextClassLoader(userCodeClassLoader);
