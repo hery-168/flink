@@ -31,17 +31,20 @@ public interface PipelineExecutorFactory {
 	/**
 	 * Returns the name of the executor that this factory creates.
 	 */
+	// HeryCode:获取执行器 executor 的名字
 	String getName();
 
 	/**
 	 * Returns {@code true} if this factory is compatible with the options in the
 	 * provided configuration, {@code false} otherwise.
 	 */
+	// HeryCode:根据配置文件判断是否满足当前的factory
 	boolean isCompatibleWith(final Configuration configuration);
 
 	/**
 	 * Instantiates an {@link PipelineExecutor} compatible with the provided configuration.
 	 * @return the executor instance.
 	 */
+	// HeryCode:获取执行器
 	PipelineExecutor getExecutor(final Configuration configuration);
 }

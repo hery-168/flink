@@ -42,5 +42,6 @@ public interface PipelineExecutor {
 	 * @param userCodeClassloader the {@link ClassLoader} to deserialize usercode
 	 * @return a {@link CompletableFuture} with the {@link JobClient} corresponding to the pipeline.
 	 */
+	// HeryCode:执行任务
 	CompletableFuture<JobClient> execute(final Pipeline pipeline, final Configuration configuration, final ClassLoader userCodeClassloader) throws Exception;
 }

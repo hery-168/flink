@@ -47,10 +47,17 @@ public class DefaultExecutorServiceLoader implements PipelineExecutorServiceLoad
 
 	private static final Logger LOG = LoggerFactory.getLogger(DefaultExecutorServiceLoader.class);
 
+	// HeryCode:根据配置获取执行器工厂，分别有：
+	//  LocalExecutorFactory(local)
+	//  RemoteExecutorFactory(standlone)
+	//  YarnJobClusterExecutorFactory(per-job)
+	//  YarnSessionClusterExecutorFactory(yarn-session)
 	@Override
 	public PipelineExecutorFactory getExecutorFactory(final Configuration configuration) {
 		checkNotNull(configuration);
 
+		// HeryCode:SPI 机制 会从类路径下的META-INF.services
+		//  下找到PipelineExecutorFactory 的全路径 然后实例化Factory
 		final ServiceLoader<PipelineExecutorFactory> loader =
 				ServiceLoader.load(PipelineExecutorFactory.class);
 
@@ -59,6 +66,7 @@ public class DefaultExecutorServiceLoader implements PipelineExecutorServiceLoad
 		while (factories.hasNext()) {
 			try {
 				final PipelineExecutorFactory factory = factories.next();
+				// HeryCode:根据任务启动的配置,判断是否满足当前的factory
 				if (factory != null && factory.isCompatibleWith(configuration)) {
 					compatibleFactories.add(factory);
 				}
@@ -83,7 +91,7 @@ public class DefaultExecutorServiceLoader implements PipelineExecutorServiceLoad
 		if (compatibleFactories.isEmpty()) {
 			throw new IllegalStateException("No ExecutorFactory found to execute the application.");
 		}
-
+		// HeryCode:compatibleFactories 只会有一个满足条件的，所以get(0)
 		return compatibleFactories.get(0);
 	}
 
