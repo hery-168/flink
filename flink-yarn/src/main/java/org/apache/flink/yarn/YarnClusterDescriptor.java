@@ -300,6 +300,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 				name.endsWith(".zip"));
 	}
 
+	// HeryCode:发布前校验，校验jar 路径、flink配置信息、core数量、hadoop配置
 	private void isReadyForDeployment(ClusterSpecification clusterSpecification) throws Exception {
 
 		if (this.flinkJarPath == null) {
@@ -310,6 +311,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		}
 
 		// Check if we don't exceed YARN's maximum virtual cores.
+		// HeryCode:
 		final int numYarnMaxVcores = yarnClusterInformationRetriever.getMaxVcores();
 
 		int configuredAmVcores = flinkConfiguration.getInteger(YarnConfigOptions.APP_MASTER_VCORES);
@@ -516,7 +518,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 					"does not have Kerberos credentials or delegation tokens!");
 			}
 		}
-		//HeryCode  部署前前置校验 如jar路径，conf，yarn 的core数量等信息
+		//HeryCode  部署前前置校验 如jar路径，flink conf，yarn 的core数量等信息
 		isReadyForDeployment(clusterSpecification);
 
 		// ------------------ Check if the specified queue exists --------------------
