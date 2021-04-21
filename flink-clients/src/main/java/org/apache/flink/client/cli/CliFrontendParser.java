@@ -266,8 +266,11 @@ public class CliFrontendParser {
 	}
 
 	public static Options getRunCommandOptions() {
+		// HeryCode:构造通用的option
 		Options options = buildGeneralOptions(new Options());
+		// HeryCode:添加程序指定选项,eg classpath  pythonfile ...
 		options = getProgramSpecificOptions(options);
+		// HeryCode:添加savepoint
 		options.addOption(SAVEPOINT_PATH_OPTION);
 		return options.addOption(SAVEPOINT_ALLOW_NON_RESTORED_OPTION);
 	}

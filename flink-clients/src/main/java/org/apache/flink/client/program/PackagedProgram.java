@@ -245,8 +245,9 @@ public class PackagedProgram {
 	 * Returns all provided libraries needed to run the program.
 	 */
 	public static List<URL> getJobJarAndDependencies(File jarFile, @Nullable String entryPointClassName) throws ProgramInvocationException {
+		// HeryCode:获取jar 文件的路径
 		URL jarFileUrl = loadJarFile(jarFile);
-
+		// HeryCode:获取jar文件里面的jar文件列表
 		List<File> extractedTempLibraries = jarFileUrl == null ? Collections.emptyList() : extractContainedLibraries(jarFileUrl);
 
 		List<URL> libs = new ArrayList<URL>(extractedTempLibraries.size() + 1);
@@ -315,7 +316,7 @@ public class PackagedProgram {
 		}
 
 		try {
-			//HeryCode 调用用户代码的main方法
+			//HeryCode 通过反射调用用户代码的main方法
 			mainMethod.invoke(null, (Object) args);
 
 		} catch (IllegalArgumentException e) {
@@ -402,7 +403,7 @@ public class PackagedProgram {
 			} catch (MalformedURLException e1) {
 				throw new IllegalArgumentException("The jar file path is invalid.");
 			}
-
+			// HeryCode:检测jar 文件
 			checkJarFile(jarFileUrl);
 
 			return jarFileUrl;

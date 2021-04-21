@@ -209,36 +209,41 @@ public class CliFrontend {
 
 	/**
 	 * Executions the run action.
-	 *
+	 * 运行程序
 	 * @param args Command line arguments for the run action.
 	 */
 	protected void run(String[] args) throws Exception {
 		LOG.info("Running 'run' command.");
-
+		// HeryCode: 根据提交参数信息 生成commandLine 对象
 		final Options commandOptions = CliFrontendParser.getRunCommandOptions();
+		// HeryCode:将args 转换为CommandLine
 		final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
-		// evaluate help flag
+		// evaluate help flag 判断是否为 获取帮助操作
 		if (commandLine.hasOption(HELP_OPTION.getOpt())) {
 			CliFrontendParser.printHelpForRun(customCommandLines);
 			return;
 		}
-
+		// HeryCode: 选择客户端，根据在main 方法loadCustomCommandLines 方法里加载的三种客户端，选择一种
 		final CustomCommandLine activeCommandLine =
 				validateAndGetActiveCommandLine(checkNotNull(commandLine));
-
+		// HeryCode: 组装ProgramOptions 对象，如程序执行入口点，jar文件路径，并行度，classpath、detachedMode
 		final ProgramOptions programOptions = ProgramOptions.create(commandLine);
-
+		// HeryCode:获取我们提交作业的jar文件URL以及递归获取jar内部的jar URL,最后返回所有jar的URL 集合
 		final List<URL> jobJars = getJobJarAndDependencies(programOptions);
-
+		// HeryCode: 获取有效配置,Flink conf, custom commandline,  program options 合集
 		final Configuration effectiveConfiguration = getEffectiveConfiguration(
 				activeCommandLine, commandLine, programOptions, jobJars);
 
 		LOG.debug("Effective executor configuration: {}", effectiveConfiguration);
-
+		// HeryCode: 生成PackagedProgram 对象
 		final PackagedProgram program = getPackagedProgram(programOptions, effectiveConfiguration);
 
 		try {
+			// HeryCode: 核心点，执行程序
+			// 1.设置用户的classloader
+			// 2.获取用户代码中getExecutionEnvironment 会返回该 Environment
+			// 3.调用用户编写代码的main方法
 			executeProgram(effectiveConfiguration, program);
 		} finally {
 			program.deleteExtractedLibraries();
@@ -249,11 +254,14 @@ public class CliFrontend {
 	 * Get all provided libraries needed to run the program from the ProgramOptions.
 	 */
 	private List<URL> getJobJarAndDependencies(ProgramOptions programOptions) throws CliArgsException {
+		// HeryCode:获取程序执行的main 方法类
 		String entryPointClass = programOptions.getEntryPointClassName();
+		// HeryCode:获取jar 路径
 		String jarFilePath = programOptions.getJarFilePath();
 
 		try {
 			File jarFile = jarFilePath != null ? getJarFile(jarFilePath) : null;
+			// HeryCode: 获取jar文件及jar文件内部的jar，返回他们的URL
 			return PackagedProgram.getJobJarAndDependencies(jarFile, entryPointClass);
 		} catch (FileNotFoundException | ProgramInvocationException e) {
 			throw new CliArgsException("Could not get job jar and dependencies from JAR file: " + e.getMessage(), e);
@@ -278,7 +286,7 @@ public class CliFrontend {
 			final CommandLine commandLine) throws FlinkException {
 
 		final Configuration effectiveConfiguration = new Configuration(configuration);
-
+  		// HeryCode:... toConfiguration 方法
 		final Configuration commandLineConfiguration =
 				checkNotNull(activeCustomCommandLine).toConfiguration(commandLine);
 
@@ -292,9 +300,9 @@ public class CliFrontend {
 			final CommandLine commandLine,
 			final ProgramOptions programOptions,
 			final List<T> jobJars) throws FlinkException {
-
+		// HeryCode:从命令行等信息中获取配置
 		final Configuration effectiveConfiguration = getEffectiveConfiguration(activeCustomCommandLine, commandLine);
-
+		// HeryCode:从programOptions 等获取配置信息
 		final ExecutionConfigAccessor executionParameters = ExecutionConfigAccessor.fromProgramOptions(
 				checkNotNull(programOptions),
 				checkNotNull(jobJars));
@@ -768,7 +776,7 @@ public class CliFrontend {
 		// Get assembler class
 		String entryPointClass = runOptions.getEntryPointClassName();
 		File jarFile = jarFilePath != null ? getJarFile(jarFilePath) : null;
-
+		// HeryCode: 生成PackagedProgram 对象
 		return PackagedProgram.newBuilder()
 			.setJarFile(jarFile)
 			.setUserClassPaths(classpaths)
@@ -1027,12 +1035,16 @@ public class CliFrontend {
 		EnvironmentInformation.logEnvironmentInfo(LOG, "Command Line Client", args);
 
 		// 1. find the configuration directory
+		// HeryCode:获取flink配置文件路径，eg:/opt/flink/conf
 		final String configurationDirectory = getConfigurationDirectoryFromEnv();
 
 		// 2. load the global configuration
+		// HeryCode:加载/opt/flink/conf/flink-conf.yaml 的内容
 		final Configuration configuration = GlobalConfiguration.loadConfiguration(configurationDirectory);
 
 		// 3. load the custom command lines
+		// HeryCode:生成 CustomCommandLine 列表，这里主按顺序添加有：GenericCLI 、flinkYarnSessionCLI、DefaultCLI
+		//  后面会根据isActive() 来按照顺序选择
 		final List<CustomCommandLine> customCommandLines = loadCustomCommandLines(
 			configuration,
 			configurationDirectory);
@@ -1043,6 +1055,7 @@ public class CliFrontend {
 				customCommandLines);
 
 			SecurityUtils.install(new SecurityConfiguration(cli.configuration));
+
 			int retCode = SecurityUtils.getInstalledContext()
 					.runSecured(() -> cli.parseAndRun(args));
 			System.exit(retCode);
@@ -1100,12 +1113,14 @@ public class CliFrontend {
 
 	public static List<CustomCommandLine> loadCustomCommandLines(Configuration configuration, String configurationDirectory) {
 		List<CustomCommandLine> customCommandLines = new ArrayList<>();
+		// HeryCode:添加 GenericCLI
 		customCommandLines.add(new GenericCLI(configuration, configurationDirectory));
 
 		//	Command line interface of the YARN session, with a special initialization here
 		//	to prefix all options with y/yarn.
 		final String flinkYarnSessionCLI = "org.apache.flink.yarn.cli.FlinkYarnSessionCli";
 		try {
+			// HeryCode:添加 flinkYarnSessionCLI
 			customCommandLines.add(
 				loadCustomCommandLine(flinkYarnSessionCLI,
 					configuration,
@@ -1125,6 +1140,7 @@ public class CliFrontend {
 
 		//	Tips: DefaultCLI must be added at last, because getActiveCustomCommandLine(..) will get the
 		//	      active CustomCommandLine in order and DefaultCLI isActive always return true.
+		// HeryCode:添加 DefaultCLI，必须添加到最后，
 		customCommandLines.add(new DefaultCLI());
 
 		return customCommandLines;
@@ -1143,6 +1159,8 @@ public class CliFrontend {
 		LOG.debug("Custom commandlines: {}", customCommandLines);
 		for (CustomCommandLine cli : customCommandLines) {
 			LOG.debug("Checking custom commandline {}, isActive: {}", cli, cli.isActive(commandLine));
+			// HeryCode：在 FlinkYarnSessionCli  为active，优先返回FlinkYarnSessionCli
+			//  对于DefaultCli，它的 isActive 方法总是返回 true
 			if (cli.isActive(commandLine)) {
 				return cli;
 			}
