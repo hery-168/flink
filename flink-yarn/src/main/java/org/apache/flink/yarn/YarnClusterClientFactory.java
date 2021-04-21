@@ -77,13 +77,13 @@ public class YarnClusterClientFactory extends AbstractContainerizedClusterClient
 	}
 
 	private YarnClusterDescriptor getClusterDescriptor(Configuration configuration) {
-		// todo 创建yarn 的客户端 YarnClient
+		//HeryCode 创建yarn 的客户端 YarnClient
 		final YarnClient yarnClient = YarnClient.createYarnClient();
 		final YarnConfiguration yarnConfiguration = new YarnConfiguration();
-		//todo  初始化和启动YarnClient
+		//HeryCode  初始化和启动YarnClient
 		yarnClient.init(yarnConfiguration);
 		yarnClient.start();
-		// todo  返回YarnCluster 描述器
+		//HeryCode  返回YarnCluster 描述器
 		return new YarnClusterDescriptor(
 			configuration,
 			yarnConfiguration,

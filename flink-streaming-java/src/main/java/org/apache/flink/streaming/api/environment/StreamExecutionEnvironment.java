@@ -1819,10 +1819,7 @@ public class StreamExecutionEnvironment {
 	 */
 	public JobExecutionResult execute(String jobName) throws Exception {
 		Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
-		/**
-		 *
-		 * todo 获取StreamGraph 并接着执行
-		 */
+		// HeryCode:获取StreamGraph 并接着执行
 		return execute(getStreamGraph(jobName));
 	}
 
@@ -1837,7 +1834,7 @@ public class StreamExecutionEnvironment {
 	 */
 	@Internal
 	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
-		// HeryCode 执行的核心
+		// HeryCode 执行的核心,返回jobClient，通过jobClient 获取执行的结果状态等
 		final JobClient jobClient = executeAsync(streamGraph);
 
 		try {
@@ -1931,7 +1928,7 @@ public class StreamExecutionEnvironment {
 	public JobClient executeAsync(StreamGraph streamGraph) throws Exception {
 		checkNotNull(streamGraph, "StreamGraph cannot be null.");
 		checkNotNull(configuration.get(DeploymentOptions.TARGET), "No execution.target specified in your configuration file.");
-		//HeryCode   使用工厂模式
+		//HeryCode   使用工厂模式,根据提交模式选择合适的factory SPI机制，根据factory 然后获取不同的执行器
 		final PipelineExecutorFactory executorFactory =
 			executorServiceLoader.getExecutorFactory(configuration);
 
@@ -1941,8 +1938,8 @@ public class StreamExecutionEnvironment {
 			configuration.get(DeploymentOptions.TARGET));
 
 		CompletableFuture<JobClient> jobClientFuture = executorFactory
-			.getExecutor(configuration) // HeryCode 获取executor，是一个接口，有很多实现类，可以关注一下 然后调用execute方法
-			.execute(streamGraph, configuration, userClassloader);// HeryCode
+			.getExecutor(configuration) // HeryCode 获取executor，是一个接口，有很多实现类，可以关注一下 ，可以看AbstractJobClusterExecutor 的execute方法
+			.execute(streamGraph, configuration, userClassloader);// HeryCode 选择合适的executor 然后提交任务
 
 		try {
 			JobClient jobClient = jobClientFuture.get();

@@ -72,6 +72,7 @@ public class AbstractJobClusterExecutor<ClusterID, ClientFactory extends Cluster
 		 */
 		try (final ClusterDescriptor<ClusterID> clusterDescriptor = clusterClientFactory.createClusterDescriptor(
 			configuration)) {
+
 			final ExecutionConfigAccessor configAccessor = ExecutionConfigAccessor.fromConfiguration(
 				configuration);
 			// HeryCode 获取集群指定的特有信息，如 jobmanager、taskManager的内存，slot数量等

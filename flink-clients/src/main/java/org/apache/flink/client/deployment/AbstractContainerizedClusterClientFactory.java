@@ -45,7 +45,7 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID> imple
 			.getTotalProcessMemorySize()
 			.getMebiBytes();
 		/**
-		 * todo 设置 taskManager 内存大小
+		 * HeryCode 设置 taskManager 内存大小
 		 */
 		final int taskManagerMemoryMB = TaskExecutorProcessUtils
 			.processSpecFromConfig(TaskExecutorProcessUtils.getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
@@ -53,7 +53,7 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID> imple
 			.getTotalProcessMemorySize()
 			.getMebiBytes();
 		/**
-		 * todo 设置 taskManager slot 大小
+		 * HeryCode 设置 taskManager slot 大小
 		 */
 		int slotsPerTaskManager = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
 

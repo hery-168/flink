@@ -290,6 +290,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 	@Override
 	public boolean isActive(CommandLine commandLine) {
 		if (!super.isActive(commandLine)) {
+			// HeryCode:从配置文件中获取ApplicationID 再次判断
 			return (isYarnPropertiesFileMode(commandLine) && yarnApplicationIdFromYarnProperties != null);
 		}
 		return true;
