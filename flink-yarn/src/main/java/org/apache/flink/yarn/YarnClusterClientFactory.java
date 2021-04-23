@@ -83,7 +83,7 @@ public class YarnClusterClientFactory extends AbstractContainerizedClusterClient
 		//HeryCode  初始化和启动YarnClient
 		yarnClient.init(yarnConfiguration);
 		yarnClient.start();
-		//HeryCode  返回YarnCluster 描述器
+		//HeryCode  返回 YarnCluster 描述器
 		return new YarnClusterDescriptor(
 			configuration,
 			yarnConfiguration,

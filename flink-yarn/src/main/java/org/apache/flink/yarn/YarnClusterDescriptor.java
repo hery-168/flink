@@ -394,6 +394,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
 			return () -> {
 				try {
+					// HeryCode:返回RestClusterClient 对象
 					return new RestClusterClient<>(flinkConfiguration, report.getApplicationId());
 				} catch (Exception e) {
 					throw new RuntimeException("Couldn't retrieve Yarn cluster", e);
@@ -1575,7 +1576,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 			.map(File::getName)
 			.noneMatch(name -> name.equals(DEFAULT_FLINK_USR_LIB_DIR));
 	}
-
+	// HeryCode:获取yarn application 信息 从report
 	private void setClusterEntrypointInfoToConfig(final ApplicationReport report) {
 		checkNotNull(report);
 
@@ -1584,11 +1585,11 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		final int port = report.getRpcPort();
 
 		LOG.info("Found Web Interface {}:{} of application '{}'.", host, port, clusterId);
-
-		flinkConfiguration.setString(JobManagerOptions.ADDRESS, host);
+		// HeryCode:为什么设置了两次，并且key 不一样？？
+		flinkConfiguration.setString(JobManagerOptions.ADDRESS, host);//该值为与jobManager通信的地址，该值不适用于高可用环境下
 		flinkConfiguration.setInteger(JobManagerOptions.PORT, port);
 
-		flinkConfiguration.setString(RestOptions.ADDRESS, host);
+		flinkConfiguration.setString(RestOptions.ADDRESS, host);//该地址是client与server进行通信的地址，是restful格式的地址
 		flinkConfiguration.setInteger(RestOptions.PORT, port);
 
 		flinkConfiguration.set(YarnConfigOptions.APPLICATION_ID, ConverterUtils.toString(clusterId));

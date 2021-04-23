@@ -216,6 +216,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 		allOptions.addOption(help);
 
 		// try loading a potential yarn properties file
+		// HeryCode:加载 yarn session 模式下，yarn application 的存放临时文件，默认在 /tmp/.yarn-properties-{user}
 		this.yarnPropertiesFileLocation = configuration.getString(YarnConfigOptions.PROPERTIES_FILE_LOCATION);
 		final File yarnPropertiesLocation = getYarnPropertiesLocation(yarnPropertiesFileLocation);
 
@@ -489,14 +490,15 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 				final ClusterClientProvider<ApplicationId> clusterClientProvider;
 				final ApplicationId yarnApplicationId;
 
-				if (cmd.hasOption(applicationId.getOpt())) {
+				if (cmd.hasOption(applicationId.getOpt())) {// HeryCode 共享模式
 					yarnApplicationId = ConverterUtils.toApplicationId(cmd.getOptionValue(applicationId.getOpt()));
-
+					// HeryCode:共享模式下，通过 yarnApplicationId 获取的ClusterClient实际上是RestClusterClient对象
 					clusterClientProvider = yarnClusterDescriptor.retrieve(yarnApplicationId);
-				} else {
+				} else {// HeryCode 非共享模式
 					final ClusterSpecification clusterSpecification = yarnClusterClientFactory.getClusterSpecification(effectiveConfiguration);
-
+					// HeryCode: flink先去在yarn部署一个集群
 					clusterClientProvider = yarnClusterDescriptor.deploySessionCluster(clusterSpecification);
+
 					ClusterClient<ApplicationId> clusterClient = clusterClientProvider.getClusterClient();
 
 					//------------------ ClusterClient deployed, handle connection details

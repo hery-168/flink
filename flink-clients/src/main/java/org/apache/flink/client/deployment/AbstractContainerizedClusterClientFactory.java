@@ -58,9 +58,9 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID> imple
 		int slotsPerTaskManager = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
 
 		return new ClusterSpecification.ClusterSpecificationBuilder()
-			.setMasterMemoryMB(jobManagerMemoryMB)
-			.setTaskManagerMemoryMB(taskManagerMemoryMB)
-			.setSlotsPerTaskManager(slotsPerTaskManager)
+			.setMasterMemoryMB(jobManagerMemoryMB) // 设置jm 内存
+			.setTaskManagerMemoryMB(taskManagerMemoryMB) // 设置tm 内存
+			.setSlotsPerTaskManager(slotsPerTaskManager) // 设置slot
 			.createClusterSpecification();
 	}
 }
