@@ -241,6 +241,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 
 			try {
 				// try converting id to ApplicationId
+				// HeryCode: 从 /tmp/.yarn-properties-{user} 文件中获取applicationID  信息
 				yarnApplicationIdFromYarnProperties = ConverterUtils.toApplicationId(yarnApplicationIdString);
 			}
 			catch (Exception e) {
@@ -326,6 +327,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 			effectiveConfiguration.setString(YarnConfigOptions.APPLICATION_ID, ConverterUtils.toString(applicationId));
 			effectiveConfiguration.setString(DeploymentOptions.TARGET, YarnSessionClusterExecutor.NAME);
 		} else {
+			// HeryCode: 设置execution.target = yarn-per-job
 			effectiveConfiguration.setString(DeploymentOptions.TARGET, YarnJobClusterExecutor.NAME);
 		}
 
@@ -464,18 +466,22 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 		//
 		//	Command Line Options
 		//
+		// HeryCode:从参数args 中进行解析，转换成CommandLine 对象
 		final CommandLine cmd = parseCommandLineOptions(args, true);
 
 		if (cmd.hasOption(help.getOpt())) {
 			printUsage();
 			return 0;
 		}
+		// HeryCode:生成有效信息
 		final Configuration effectiveConfiguration = new Configuration(configuration);
+
 		final Configuration commandLineConfiguration = toConfiguration(cmd);
 		effectiveConfiguration.addAll(commandLineConfiguration);
 		LOG.debug("Effective configuration: {}", effectiveConfiguration);
-
+		// HeryCode:  SPI 机制，
 		final ClusterClientFactory<ApplicationId> yarnClusterClientFactory = clusterClientServiceLoader.getClusterClientFactory(effectiveConfiguration);
+		// HeryCode:设置运行模式为 execution.target 为 session
 		effectiveConfiguration.set(DeploymentOptions.TARGET, YarnDeploymentTarget.SESSION.getName());
 
 		final YarnClusterDescriptor yarnClusterDescriptor = (YarnClusterDescriptor) yarnClusterClientFactory.createClusterDescriptor(effectiveConfiguration);
@@ -489,16 +495,17 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 			} else {
 				final ClusterClientProvider<ApplicationId> clusterClientProvider;
 				final ApplicationId yarnApplicationId;
-
-				if (cmd.hasOption(applicationId.getOpt())) {// HeryCode 共享模式
+				//  HeryCode:如果在运行yarn-session.sh 时候指定 -id 参数，那么 -id,--applicationId <arg>       Attach to running YARN session
+				if (cmd.hasOption(applicationId.getOpt())) {
 					yarnApplicationId = ConverterUtils.toApplicationId(cmd.getOptionValue(applicationId.getOpt()));
 					// HeryCode:共享模式下，通过 yarnApplicationId 获取的ClusterClient实际上是RestClusterClient对象
 					clusterClientProvider = yarnClusterDescriptor.retrieve(yarnApplicationId);
-				} else {// HeryCode 非共享模式
+				} else {
+					// HeryCode  当我们在机器上执行yarn-session.sh 命令的时候 启动 flink session cluster
 					final ClusterSpecification clusterSpecification = yarnClusterClientFactory.getClusterSpecification(effectiveConfiguration);
-					// HeryCode: flink先去在yarn部署一个集群
+					// HeryCode: flink先去在yarn部署一个集群  flink session cluster 该session 集群没有jobGraph 等信息
 					clusterClientProvider = yarnClusterDescriptor.deploySessionCluster(clusterSpecification);
-
+					// HeryCode:返回 clusterClient 里面包含applicationID 信息
 					ClusterClient<ApplicationId> clusterClient = clusterClientProvider.getClusterClient();
 
 					//------------------ ClusterClient deployed, handle connection details
@@ -506,7 +513,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 
 					try {
 						System.out.println("JobManager Web Interface: " + clusterClient.getWebInterfaceURL());
-
+						// HeryCode:当我们使用yarn-session.sh 脚本成功执行后，会在本地文件写入applicationId 信息，默认是在/tmp/.yarn-properties-{user}
 						writeYarnPropertiesFile(
 							yarnApplicationId,
 							dynamicPropertiesEncoded);
@@ -526,7 +533,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 						throw new FlinkException("Could not write the Yarn connection information.", e);
 					}
 				}
-
+				// HeryCode:判断是否为 execution.attached 模式，也是就是在执行yarn-session.sh 的时候是否指定 -d 参数
 				if (!effectiveConfiguration.getBoolean(DeploymentOptions.ATTACHED)) {
 					YarnClusterDescriptor.logDetachedClusterInformation(yarnApplicationId, LOG);
 				} else {
@@ -536,6 +543,8 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 						yarnClusterDescriptor.getYarnClient(),
 						yarnApplicationId,
 						new ScheduledExecutorServiceAdapter(scheduledExecutorService));
+
+					// HeryCode: close 相关组件
 					Thread shutdownHook = ShutdownHookUtil.addShutdownHook(
 						() -> shutdownCluster(
 								clusterClientProvider.getClusterClient(),
@@ -715,21 +724,23 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
 	}
 
 	public static void main(final String[] args) {
+		// HeryCode: 从环境变量 FLINK_CONF_DIR 中获取 flink配置文件的路径
 		final String configurationDirectory = CliFrontend.getConfigurationDirectoryFromEnv();
-
+		// HeryCode:加载配置信息，从flink conf flink-conf.yaml中
 		final Configuration flinkConfiguration = GlobalConfiguration.loadConfiguration();
 
 		int retCode;
 
 		try {
+			// HeryCode:构建 FlinkYarnSessionCli 客户端
 			final FlinkYarnSessionCli cli = new FlinkYarnSessionCli(
 				flinkConfiguration,
 				configurationDirectory,
 				"",
 				""); // no prefix for the YARN session
-
+			// HeryCode:安全相关处理
 			SecurityUtils.install(new SecurityConfiguration(flinkConfiguration));
-
+			// HeryCode:调用FlinkYarnSessionCli 的run 运行 yarn session
 			retCode = SecurityUtils.getInstalledContext().runSecured(() -> cli.run(args));
 		} catch (CliArgsException e) {
 			retCode = handleCliArgsException(e, LOG);

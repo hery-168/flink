@@ -141,6 +141,7 @@ public class CliFrontend {
 		}
 
 		this.clientTimeout = configuration.get(ClientOptions.CLIENT_TIMEOUT);
+		// HeryCode: 默认parallelism=1
 		this.defaultParallelism = configuration.getInteger(CoreOptions.DEFAULT_PARALLELISM);
 	}
 
@@ -264,7 +265,9 @@ public class CliFrontend {
 
 		LOG.debug("Effective executor configuration: {}", effectiveConfiguration);
 		// HeryCode: 生成PackagedProgram 对象
-		// 获取程序包
+		// 1、从jar中抽取出job依赖的jar包（解析jar目录结构，如果存在lib目录，则对该目录进行扫描，看是否有jar包，如果有，则会提取jar包并写入到本地的临时目录中，供后期使用。）
+		// 2、从jar包中获取job的入口类（解析jar中的manifest，如果有program-class配置，则优先使用该配置，否则再看一下是否有Main-Class配置
+		// 3、从jar包中获取job的执行计划
 		/***
 		 * return PackagedProgram.newBuilder()
 		 * 			.setJarFile(jarFile) jar包名称
@@ -275,6 +278,7 @@ public class CliFrontend {
 		 * 			.setArguments(programArgs) 参数
 		 * 			.build();
 		 **/
+
 		final PackagedProgram program = getPackagedProgram(programOptions, effectiveConfiguration);
 
 		try {
@@ -1103,6 +1107,7 @@ public class CliFrontend {
 
 			// 认真组件modules以及上下文context
 			SecurityUtils.install(new SecurityConfiguration(cli.configuration));
+			// HeryCode:解析参数并运行
 			int retCode = SecurityUtils.getInstalledContext()
 					.runSecured(() -> cli.parseAndRun(args));
 			System.exit(retCode);
@@ -1160,7 +1165,7 @@ public class CliFrontend {
 
 	public static List<CustomCommandLine> loadCustomCommandLines(Configuration configuration, String configurationDirectory) {
 		List<CustomCommandLine> customCommandLines = new ArrayList<>();
-		// HeryCode:添加 GenericCLI
+		// HeryCode:添加 GenericCLI application model  以前版本沒有该模式
 		customCommandLines.add(new GenericCLI(configuration, configurationDirectory));
 
 		//	Command line interface of the YARN session, with a special initialization here
@@ -1168,7 +1173,7 @@ public class CliFrontend {
 		// yarn命令行接口，调用命令
 		final String flinkYarnSessionCLI = "org.apache.flink.yarn.cli.FlinkYarnSessionCli";
 		try {
-			// HeryCode:添加 flinkYarnSessionCLI
+			// HeryCode:添加 flinkYarnSessionCLI   yarn model
 			customCommandLines.add(
 				loadCustomCommandLine(flinkYarnSessionCLI,
 					configuration,
@@ -1188,7 +1193,7 @@ public class CliFrontend {
 
 		//	Tips: DefaultCLI must be added at last, because getActiveCustomCommandLine(..) will get the
 		//	      active CustomCommandLine in order and DefaultCLI isActive always return true.
-		// HeryCode:添加 DefaultCLI，必须添加到最后，
+		// HeryCode:添加 DefaultCLI，必须添加到最后， standalone clusters
 		customCommandLines.add(new DefaultCLI());
 
 		return customCommandLines;

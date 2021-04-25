@@ -46,6 +46,7 @@ public class YarnSessionClusterExecutorFactory implements PipelineExecutorFactor
 	@Override
 	public PipelineExecutor getExecutor(@Nonnull final Configuration configuration) {
 		try {
+			// HeryCode:session 方式的执行器
 			return new YarnSessionClusterExecutor();
 		} catch (NoClassDefFoundError e) {
 			throw new IllegalStateException(YarnDeploymentTarget.ERROR_MESSAGE);

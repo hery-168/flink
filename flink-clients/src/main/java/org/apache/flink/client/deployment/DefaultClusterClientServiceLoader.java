@@ -46,7 +46,7 @@ public class DefaultClusterClientServiceLoader implements ClusterClientServiceLo
 	@Override
 	public <ClusterID> ClusterClientFactory<ClusterID> getClusterClientFactory(final Configuration configuration) {
 		checkNotNull(configuration);
-
+		// HeryCode: SPI 机制， 只有一个实现：org.apache.flink.yarn.YarnClusterClientFactory
 		final ServiceLoader<ClusterClientFactory> loader =
 				ServiceLoader.load(ClusterClientFactory.class);
 

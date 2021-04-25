@@ -56,7 +56,7 @@ public class AbstractJobClusterExecutor<ClusterID, ClientFactory extends Cluster
 	public AbstractJobClusterExecutor(@Nonnull final ClientFactory clusterClientFactory) {
 		this.clusterClientFactory = checkNotNull(clusterClientFactory);
 	}
-
+	// HeryCode:flink per-job 提交方式
 	@Override
 	public CompletableFuture<JobClient> execute(
 		@Nonnull final Pipeline pipeline,
@@ -67,7 +67,7 @@ public class AbstractJobClusterExecutor<ClusterID, ClientFactory extends Cluster
 		 */
 		final JobGraph jobGraph = PipelineExecutorUtils.getJobGraph(pipeline, configuration);
 		/**
-		 * HeryCode 创建集群描述器
+		 * HeryCode 创建集群描述器 返回 YarnClusterDescriptor
 		 * 集群描述器包含YarnClient ，然后进行初始化和启动，最后返回集群描述器(包含yarn flink 等配置信息和环境信息)
 		 */
 		try (final ClusterDescriptor<ClusterID> clusterDescriptor = clusterClientFactory.createClusterDescriptor(
@@ -79,7 +79,7 @@ public class AbstractJobClusterExecutor<ClusterID, ClientFactory extends Cluster
 			final ClusterSpecification clusterSpecification = clusterClientFactory.getClusterSpecification(
 				configuration);
 			/**
-			 * HeryCode 部署集群
+			 * HeryCode 部署集群 调用YarnClusterDescriptor 的 deployJobCluster 方法
 			 */
 			final ClusterClientProvider<ClusterID> clusterClientProvider = clusterDescriptor
 				.deployJobCluster(clusterSpecification, jobGraph, configAccessor.getDetachedMode());

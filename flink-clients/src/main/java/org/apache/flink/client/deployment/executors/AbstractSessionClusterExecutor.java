@@ -54,16 +54,21 @@ public class AbstractSessionClusterExecutor<ClusterID, ClientFactory extends Clu
 		this.clusterClientFactory = checkNotNull(clusterClientFactory);
 	}
 
+	// HeryCode:flink session 的作业提交方式
 	@Override
 	public CompletableFuture<JobClient> execute(@Nonnull final Pipeline pipeline, @Nonnull final Configuration configuration, @Nonnull final ClassLoader userCodeClassloader) throws Exception {
+		// HeryCode: 获取job 的 JobGraph
 		final JobGraph jobGraph = PipelineExecutorUtils.getJobGraph(pipeline, configuration);
 
 		try (final ClusterDescriptor<ClusterID> clusterDescriptor = clusterClientFactory.createClusterDescriptor(configuration)) {
+			// HeryCode:获取 ClusterID
 			final ClusterID clusterID = clusterClientFactory.getClusterId(configuration);
 			checkState(clusterID != null);
-
+			// HeryCode: 获取 RestClusterClient RestClusterClient与Server(JobManager)通信走的是Http协议并且是restful风格
 			final ClusterClientProvider<ClusterID> clusterClientProvider = clusterDescriptor.retrieve(clusterID);
+
 			ClusterClient<ClusterID> clusterClient = clusterClientProvider.getClusterClient();
+			// HeryCode:提交session作业到 ClusterID 指定的application 上
 			return clusterClient
 					.submitJob(jobGraph)
 					.thenApplyAsync(FunctionUtils.uncheckedFunction(jobId -> {

@@ -1912,6 +1912,7 @@ public class StreamExecutionEnvironment {
 	 */
 	@PublicEvolving
 	public JobClient executeAsync(String jobName) throws Exception {
+		// HeryCode: 生成 StreamGraph
 		return executeAsync(getStreamGraph(checkNotNull(jobName)));
 	}
 
@@ -1929,6 +1930,11 @@ public class StreamExecutionEnvironment {
 		checkNotNull(streamGraph, "StreamGraph cannot be null.");
 		checkNotNull(configuration.get(DeploymentOptions.TARGET), "No execution.target specified in your configuration file.");
 		//HeryCode   使用工厂模式,根据提交模式选择合适的factory SPI机制，根据factory 然后获取不同的执行器
+		// HeryCode:有一下两种
+		/**
+		 * per-job: org.apache.flink.yarn.executors.YarnJobClusterExecutorFactory
+		 * session: org.apache.flink.yarn.executors.YarnSessionClusterExecutorFactory
+		 */
 		final PipelineExecutorFactory executorFactory =
 			executorServiceLoader.getExecutorFactory(configuration);
 
@@ -1936,6 +1942,11 @@ public class StreamExecutionEnvironment {
 			executorFactory,
 			"Cannot find compatible factory for specified execution.target (=%s)",
 			configuration.get(DeploymentOptions.TARGET));
+		// HeryCode: per-job 和session不同，获取不同的executor,然后执行相应的 execute 方法
+		/**
+		 *  per-job的executor为：new YarnJobClusterExecutor()
+		 *  session的executor为：new YarnSessionClusterExecutor()  最后是调用AbstractSessionClusterExecutor#execute
+		*/
 
 		CompletableFuture<JobClient> jobClientFuture = executorFactory
 			.getExecutor(configuration) // HeryCode 获取executor，是一个接口，有很多实现类，可以关注一下 ，可以看AbstractJobClusterExecutor 的execute方法

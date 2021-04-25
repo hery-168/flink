@@ -42,6 +42,6 @@ public interface PipelineExecutor {
 	 * @param userCodeClassloader the {@link ClassLoader} to deserialize usercode
 	 * @return a {@link CompletableFuture} with the {@link JobClient} corresponding to the pipeline.
 	 */
-	// HeryCode:执行任务
+	// HeryCode:执行任务 根据job的提交方式不同，选择不同的执行器进行作业提交，有per-job 和session 方式
 	CompletableFuture<JobClient> execute(final Pipeline pipeline, final Configuration configuration, final ClassLoader userCodeClassloader) throws Exception;
 }

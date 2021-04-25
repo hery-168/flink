@@ -1585,8 +1585,8 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 		final int port = report.getRpcPort();
 
 		LOG.info("Found Web Interface {}:{} of application '{}'.", host, port, clusterId);
-		// HeryCode:为什么设置了两次，并且key 不一样？？
-		flinkConfiguration.setString(JobManagerOptions.ADDRESS, host);//该值为与jobManager通信的地址，该值不适用于高可用环境下
+		// HeryCode:为什么设置了两次，并且key 不一样？？因为一个用于和JM 通信，一个用于client和server通信
+		flinkConfiguration.setString(JobManagerOptions.ADDRESS, host);//该值为与jobManager通信的地址，该值不适用于高可用环境下，如心跳，状态等同步
 		flinkConfiguration.setInteger(JobManagerOptions.PORT, port);
 
 		flinkConfiguration.setString(RestOptions.ADDRESS, host);//该地址是client与server进行通信的地址，是restful格式的地址
