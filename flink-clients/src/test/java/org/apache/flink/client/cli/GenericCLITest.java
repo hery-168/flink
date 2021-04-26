@@ -108,7 +108,7 @@ public class GenericCLITest {
 		assertFalse(configuration.getBoolean(DeploymentOptions.ATTACHED));
 		assertEquals(listValue, configuration.get(listOption));
 	}
-
+	// HeryCode:测试 executor 属性
 	@Test
 	public void testIsActiveLong() throws CliArgsException {
 		testIsActiveHelper("--executor");

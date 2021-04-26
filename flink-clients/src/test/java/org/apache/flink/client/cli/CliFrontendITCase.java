@@ -74,6 +74,7 @@ public class CliFrontendITCase {
 		assertThat(getStdoutString(), containsString("Watermark interval is 42"));
 	}
 
+	// HeryCode: 测试parseAndRun
 	@Test
 	public void commandlineOverridesConfiguration() throws Exception {
 		Configuration config = new Configuration();
