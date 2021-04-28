@@ -79,6 +79,21 @@ public enum ClientUtils {
                 checkClassloaderLeak);
     }
 
+<<<<<<< HEAD
+	public static void executeProgram(
+			PipelineExecutorServiceLoader executorServiceLoader,
+			Configuration configuration,
+			PackagedProgram program,
+			boolean enforceSingleJobExecution, //false
+			boolean suppressSysout) throws ProgramInvocationException { //false
+		checkNotNull(executorServiceLoader);// new DefaultExecutorServiceLoader();
+		final ClassLoader userCodeClassLoader = program.getUserCodeClassLoader();
+		//ClientUtils.buildUserCodeClassLoader()
+		final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+		try {
+			// HeryCode:设置当前的 classloader 为用户代码的 classloader
+			Thread.currentThread().setContextClassLoader(userCodeClassLoader);
+=======
     public static void executeProgram(
             PipelineExecutorServiceLoader executorServiceLoader,
             Configuration configuration,
@@ -91,17 +106,28 @@ public enum ClientUtils {
         final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(userCodeClassLoader);
+>>>>>>> release-1.12
 
             LOG.info(
                     "Starting program (detached: {})",
                     !configuration.getBoolean(DeploymentOptions.ATTACHED));
 
+<<<<<<< HEAD
+			// HeryCode:用户代码中的 getExecutionEnvironment 会返回该 Environment
+			ContextEnvironment.setAsContext(
+				executorServiceLoader,
+				configuration,
+				userCodeClassLoader,
+				enforceSingleJobExecution,
+				suppressSysout);
+=======
             ContextEnvironment.setAsContext(
                     executorServiceLoader,
                     configuration,
                     userCodeClassLoader,
                     enforceSingleJobExecution,
                     suppressSysout);
+>>>>>>> release-1.12
 
             StreamContextEnvironment.setAsContext(
                     executorServiceLoader,
@@ -110,6 +136,19 @@ public enum ClientUtils {
                     enforceSingleJobExecution,
                     suppressSysout);
 
+<<<<<<< HEAD
+			try {
+				// HeryCode:调用用户编写代码的main方法
+				program.invokeInteractiveModeForExecution();
+			} finally {
+				ContextEnvironment.unsetAsContext();
+				StreamContextEnvironment.unsetAsContext();
+			}
+		} finally {
+			Thread.currentThread().setContextClassLoader(contextClassLoader);
+		}
+	}
+=======
             try {
                 program.invokeInteractiveModeForExecution();
             } finally {
@@ -120,6 +159,7 @@ public enum ClientUtils {
             Thread.currentThread().setContextClassLoader(contextClassLoader);
         }
     }
+>>>>>>> release-1.12
 
     /**
      * This method blocks until the job status is not INITIALIZING anymore.

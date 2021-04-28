@@ -69,6 +69,208 @@ import static org.apache.flink.util.Preconditions.checkState;
 @Internal
 public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
 
+<<<<<<< HEAD
+	private final CheckpointedInputGate checkpointedInputGate;
+
+	private final DeserializationDelegate<StreamElement> deserializationDelegate;
+
+	private final RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDeserializers;
+
+	/** Valve that controls how watermarks and stream statuses are forwarded. */
+	private final StatusWatermarkValve statusWatermarkValve;
+
+	private final int inputIndex;
+
+	private final Map<InputChannelInfo, Integer> channelIndexes;
+
+	private int lastChannel = UNSPECIFIED;
+
+	private RecordDeserializer<DeserializationDelegate<StreamElement>> currentRecordDeserializer = null;
+
+	@SuppressWarnings("unchecked")
+	public StreamTaskNetworkInput(
+			CheckpointedInputGate checkpointedInputGate,
+			TypeSerializer<?> inputSerializer,
+			IOManager ioManager,
+			StatusWatermarkValve statusWatermarkValve,
+			int inputIndex) {
+		this.checkpointedInputGate = checkpointedInputGate;
+		this.deserializationDelegate = new NonReusingDeserializationDelegate<>(
+			new StreamElementSerializer<>(inputSerializer));
+
+		// Initialize one deserializer per input channel
+		this.recordDeserializers = new SpillingAdaptiveSpanningRecordDeserializer[checkpointedInputGate.getNumberOfInputChannels()];
+		for (int i = 0; i < recordDeserializers.length; i++) {
+			recordDeserializers[i] = new SpillingAdaptiveSpanningRecordDeserializer<>(
+				ioManager.getSpillingDirectoriesPaths());
+		}
+
+		this.statusWatermarkValve = checkNotNull(statusWatermarkValve);
+		this.inputIndex = inputIndex;
+		this.channelIndexes = getChannelIndexes(checkpointedInputGate);
+	}
+
+	@Nonnull
+	private static Map<InputChannelInfo, Integer> getChannelIndexes(CheckpointedInputGate checkpointedInputGate) {
+		int index = 0;
+		List<InputChannelInfo> channelInfos = checkpointedInputGate.getChannelInfos();
+		Map<InputChannelInfo, Integer> channelIndexes = new HashMap<>(channelInfos.size());
+		for (InputChannelInfo channelInfo : channelInfos) {
+			channelIndexes.put(channelInfo, index++);
+		}
+		return channelIndexes;
+	}
+
+	@VisibleForTesting
+	StreamTaskNetworkInput(
+		CheckpointedInputGate checkpointedInputGate,
+		TypeSerializer<?> inputSerializer,
+		StatusWatermarkValve statusWatermarkValve,
+		int inputIndex,
+		RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDeserializers) {
+
+		this.checkpointedInputGate = checkpointedInputGate;
+		this.deserializationDelegate = new NonReusingDeserializationDelegate<>(
+			new StreamElementSerializer<>(inputSerializer));
+		this.recordDeserializers = recordDeserializers;
+		this.statusWatermarkValve = statusWatermarkValve;
+		this.inputIndex = inputIndex;
+		this.channelIndexes = getChannelIndexes(checkpointedInputGate);
+	}
+
+	@Override
+	public InputStatus emitNext(DataOutput<T> output) throws Exception {
+
+		while (true) {
+			// get the stream element from the deserializer
+			if (currentRecordDeserializer != null) {
+				DeserializationResult result = currentRecordDeserializer.getNextRecord(deserializationDelegate);
+				if (result.isBufferConsumed()) {
+					currentRecordDeserializer.getCurrentBuffer().recycleBuffer();
+					currentRecordDeserializer = null;
+				}
+
+				if (result.isFullRecord()) {
+					// HeryCode:核心逻辑 处理元素
+					processElement(deserializationDelegate.getInstance(), output);
+					return InputStatus.MORE_AVAILABLE;
+				}
+			}
+
+			Optional<BufferOrEvent> bufferOrEvent = checkpointedInputGate.pollNext();
+			if (bufferOrEvent.isPresent()) {
+				// return to the mailbox after receiving a checkpoint barrier to avoid processing of
+				// data after the barrier before checkpoint is performed for unaligned checkpoint mode
+				if (bufferOrEvent.get().isBuffer()) {
+					processBuffer(bufferOrEvent.get());
+				} else {
+					processEvent(bufferOrEvent.get());
+					return InputStatus.MORE_AVAILABLE;
+				}
+			} else {
+				if (checkpointedInputGate.isFinished()) {
+					checkState(checkpointedInputGate.getAvailableFuture().isDone(), "Finished BarrierHandler should be available");
+					return InputStatus.END_OF_INPUT;
+				}
+				return InputStatus.NOTHING_AVAILABLE;
+			}
+		}
+	}
+
+	private void processElement(StreamElement recordOrMark, DataOutput<T> output) throws Exception {
+		// HeryCode:如果是数据
+		if (recordOrMark.isRecord()){
+			// HeryCode:,比如map算子，emitRecord应该在OneInputStreamTask.java中调用
+			output.emitRecord(recordOrMark.asRecord());
+		} else if (recordOrMark.isWatermark()) {
+			statusWatermarkValve.inputWatermark(recordOrMark.asWatermark(), lastChannel, output);
+		} else if (recordOrMark.isLatencyMarker()) {
+			output.emitLatencyMarker(recordOrMark.asLatencyMarker());
+		} else if (recordOrMark.isStreamStatus()) {
+			statusWatermarkValve.inputStreamStatus(recordOrMark.asStreamStatus(), lastChannel, output);
+		} else {
+			throw new UnsupportedOperationException("Unknown type of StreamElement");
+		}
+	}
+
+	private void processEvent(BufferOrEvent bufferOrEvent) {
+		// Event received
+		final AbstractEvent event = bufferOrEvent.getEvent();
+		// TODO: with checkpointedInputGate.isFinished() we might not need to support any events on this level.
+		if (event.getClass() == EndOfPartitionEvent.class) {
+			// release the record deserializer immediately,
+			// which is very valuable in case of bounded stream
+			releaseDeserializer(channelIndexes.get(bufferOrEvent.getChannelInfo()));
+		}
+	}
+
+	private void processBuffer(BufferOrEvent bufferOrEvent) throws IOException {
+		lastChannel = channelIndexes.get(bufferOrEvent.getChannelInfo());
+		checkState(lastChannel != StreamTaskInput.UNSPECIFIED);
+		currentRecordDeserializer = recordDeserializers[lastChannel];
+		checkState(currentRecordDeserializer != null,
+			"currentRecordDeserializer has already been released");
+
+		currentRecordDeserializer.setNextBuffer(bufferOrEvent.getBuffer());
+	}
+
+	@Override
+	public int getInputIndex() {
+		return inputIndex;
+	}
+
+	@Override
+	public CompletableFuture<?> getAvailableFuture() {
+		if (currentRecordDeserializer != null) {
+			return AVAILABLE;
+		}
+		return checkpointedInputGate.getAvailableFuture();
+	}
+
+	@Override
+	public CompletableFuture<Void> prepareSnapshot(
+			ChannelStateWriter channelStateWriter,
+			long checkpointId) throws IOException {
+		for (int channelIndex = 0; channelIndex < recordDeserializers.length; channelIndex++) {
+			RecordDeserializer<?> deserializer = recordDeserializers[channelIndex];
+			if (deserializer != null) {
+				final InputChannel channel = checkpointedInputGate.getChannel(channelIndex);
+
+				channelStateWriter.addInputData(
+					checkpointId,
+					channel.getChannelInfo(),
+					ChannelStateWriter.SEQUENCE_NUMBER_UNKNOWN,
+					deserializer.getUnconsumedBuffer());
+			}
+		}
+		return checkpointedInputGate.getAllBarriersReceivedFuture(checkpointId);
+	}
+
+	@Override
+	public void close() throws IOException {
+		// release the deserializers . this part should not ever fail
+		for (int channelIndex = 0; channelIndex < recordDeserializers.length; channelIndex++) {
+			releaseDeserializer(channelIndex);
+		}
+
+		// cleanup the resources of the checkpointed input gate
+		checkpointedInputGate.close();
+	}
+
+	private void releaseDeserializer(int channelIndex) {
+		RecordDeserializer<?> deserializer = recordDeserializers[channelIndex];
+		if (deserializer != null) {
+			// recycle buffers and clear the deserializer.
+			Buffer buffer = deserializer.getCurrentBuffer();
+			if (buffer != null && !buffer.isRecycled()) {
+				buffer.recycleBuffer();
+			}
+			deserializer.clear();
+
+			recordDeserializers[channelIndex] = null;
+		}
+	}
+=======
     private final CheckpointedInputGate checkpointedInputGate;
 
     private final DeserializationDelegate<StreamElement> deserializationDelegate;
@@ -292,4 +494,5 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
             recordDeserializers.remove(channelInfo);
         }
     }
+>>>>>>> release-1.12
 }

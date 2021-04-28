@@ -55,6 +55,21 @@ abstract class AbstractOneInputTransformationTranslator<IN, OUT, OP extends Tran
         checkNotNull(inputType);
         checkNotNull(context);
 
+<<<<<<< HEAD
+		final StreamGraph streamGraph = context.getStreamGraph();
+		final String slotSharingGroup = context.getSlotSharingGroup();
+		final int transformationId = transformation.getId();
+		final ExecutionConfig executionConfig = streamGraph.getExecutionConfig();
+		// HeryCode: 添加StreamNode
+		streamGraph.addOperator(
+			transformationId,
+			slotSharingGroup,
+			transformation.getCoLocationGroupKey(),
+			operatorFactory,
+			inputType,
+			transformation.getOutputType(),
+			transformation.getName());
+=======
         final StreamGraph streamGraph = context.getStreamGraph();
         final String slotSharingGroup = context.getSlotSharingGroup();
         final int transformationId = transformation.getId();
@@ -68,6 +83,7 @@ abstract class AbstractOneInputTransformationTranslator<IN, OUT, OP extends Tran
                 inputType,
                 transformation.getOutputType(),
                 transformation.getName());
+>>>>>>> release-1.12
 
         if (stateKeySelector != null) {
             TypeSerializer<?> keySerializer = stateKeyType.createSerializer(executionConfig);
@@ -81,6 +97,16 @@ abstract class AbstractOneInputTransformationTranslator<IN, OUT, OP extends Tran
         streamGraph.setParallelism(transformationId, parallelism);
         streamGraph.setMaxParallelism(transformationId, transformation.getMaxParallelism());
 
+<<<<<<< HEAD
+		final List<Transformation<?>> parentTransformations = transformation.getInputs();
+		checkState(
+			parentTransformations.size() == 1,
+			"Expected exactly one input transformation but found " + parentTransformations.size());
+		// HeryCode:添加StreamEdge
+		for (Integer inputId: context.getStreamNodeIds(parentTransformations.get(0))) {
+			streamGraph.addEdge(inputId, transformationId, 0);
+		}
+=======
         final List<Transformation<?>> parentTransformations = transformation.getInputs();
         checkState(
                 parentTransformations.size() == 1,
@@ -90,6 +116,7 @@ abstract class AbstractOneInputTransformationTranslator<IN, OUT, OP extends Tran
         for (Integer inputId : context.getStreamNodeIds(parentTransformations.get(0))) {
             streamGraph.addEdge(inputId, transformationId, 0);
         }
+>>>>>>> release-1.12
 
         return Collections.singleton(transformationId);
     }

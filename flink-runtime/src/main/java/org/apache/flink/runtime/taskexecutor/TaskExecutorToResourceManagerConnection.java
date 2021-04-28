@@ -38,6 +38,97 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** The connection between a TaskExecutor and the ResourceManager. */
 public class TaskExecutorToResourceManagerConnection
+<<<<<<< HEAD
+		extends RegisteredRpcConnection<ResourceManagerId, ResourceManagerGateway, TaskExecutorRegistrationSuccess> {
+
+	private final RpcService rpcService;
+
+	private final RetryingRegistrationConfiguration retryingRegistrationConfiguration;
+
+	private final RegistrationConnectionListener<TaskExecutorToResourceManagerConnection, TaskExecutorRegistrationSuccess> registrationListener;
+
+	private final TaskExecutorRegistration taskExecutorRegistration;
+
+	public TaskExecutorToResourceManagerConnection(
+			Logger log,
+			RpcService rpcService,
+			RetryingRegistrationConfiguration retryingRegistrationConfiguration,
+			String resourceManagerAddress,
+			ResourceManagerId resourceManagerId,
+			Executor executor,
+			RegistrationConnectionListener<TaskExecutorToResourceManagerConnection, TaskExecutorRegistrationSuccess> registrationListener,
+			TaskExecutorRegistration taskExecutorRegistration) {
+
+		super(log, resourceManagerAddress, resourceManagerId, executor);
+
+		this.rpcService = checkNotNull(rpcService);
+		this.retryingRegistrationConfiguration = checkNotNull(retryingRegistrationConfiguration);
+		this.registrationListener = checkNotNull(registrationListener);
+		this.taskExecutorRegistration = checkNotNull(taskExecutorRegistration);
+	}
+
+	@Override
+	protected RetryingRegistration<ResourceManagerId, ResourceManagerGateway, TaskExecutorRegistrationSuccess> generateRegistration() {
+
+		return new TaskExecutorToResourceManagerConnection.ResourceManagerRegistration(
+			log,
+			rpcService,
+			getTargetAddress(),
+			getTargetLeaderId(),
+			retryingRegistrationConfiguration,
+			taskExecutorRegistration);
+	}
+// HeryCode:注册成功
+	@Override
+	protected void onRegistrationSuccess(TaskExecutorRegistrationSuccess success) {
+		log.info("Successful registration at resource manager {} under registration id {}.",
+			getTargetAddress(), success.getRegistrationId());
+		// HeryCode:
+		registrationListener.onRegistrationSuccess(this, success);
+	}
+
+	@Override
+	protected void onRegistrationFailure(Throwable failure) {
+		log.info("Failed to register at resource manager {}.", getTargetAddress(), failure);
+
+		registrationListener.onRegistrationFailure(failure);
+	}
+
+	// ------------------------------------------------------------------------
+	//  Utilities
+	// ------------------------------------------------------------------------
+
+	private static class ResourceManagerRegistration
+			extends RetryingRegistration<ResourceManagerId, ResourceManagerGateway, TaskExecutorRegistrationSuccess> {
+
+		private final TaskExecutorRegistration taskExecutorRegistration;
+
+		ResourceManagerRegistration(
+				Logger log,
+				RpcService rpcService,
+				String targetAddress,
+				ResourceManagerId resourceManagerId,
+				RetryingRegistrationConfiguration retryingRegistrationConfiguration,
+				TaskExecutorRegistration taskExecutorRegistration) {
+			// HeryCode:调用父类的方法  super()
+			super(log, rpcService, "ResourceManager", ResourceManagerGateway.class, targetAddress, resourceManagerId, retryingRegistrationConfiguration);
+
+			this.taskExecutorRegistration = taskExecutorRegistration;
+		}
+
+		// HeryCode: 开始注册，最后会调用下面这个方法
+		@Override
+		protected CompletableFuture<RegistrationResponse> invokeRegistration(
+				ResourceManagerGateway resourceManager, ResourceManagerId fencingToken, long timeoutMillis) throws Exception {
+
+			Time timeout = Time.milliseconds(timeoutMillis);
+			// HeryCode:注册TaskExecutor
+			return resourceManager.registerTaskExecutor(
+				taskExecutorRegistration,
+				timeout);
+		}
+	}
+=======
         extends RegisteredRpcConnection<
                 ResourceManagerId,
                 ResourceManagerGateway,
@@ -159,4 +250,5 @@ public class TaskExecutorToResourceManagerConnection
             return resourceManager.registerTaskExecutor(taskExecutorRegistration, timeout);
         }
     }
+>>>>>>> release-1.12
 }

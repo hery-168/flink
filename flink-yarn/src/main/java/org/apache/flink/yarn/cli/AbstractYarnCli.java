@@ -50,6 +50,21 @@ abstract class AbstractYarnCli extends AbstractCustomCommandLine {
                         "Attach to running YARN session");
     }
 
+<<<<<<< HEAD
+	@Override
+	public boolean isActive(CommandLine commandLine) {
+		final String jobManagerOption = commandLine.getOptionValue(addressOption.getOpt(), null);
+		// HeryCode:判断是否指定为per-job 模式，也就是在我们提交的时候，指定为 flink -m yarn-cluster
+		final boolean yarnJobManager = ID.equals(jobManagerOption); // 是否为yarn-cluster
+		// HeryCode: 通过application id 判断，是否为yarn-session 方式启动
+		final boolean hasYarnAppId = commandLine.hasOption(applicationId.getOpt())
+			|| configuration.getOptional(YarnConfigOptions.APPLICATION_ID).isPresent();
+		// HeryCode:通过配置判断execution.target ，executor 的名字是否为 yarn-session 或 yarn-per-job，
+		final boolean hasYarnExecutor = YarnSessionClusterExecutor.NAME.equalsIgnoreCase(configuration.get(DeploymentOptions.TARGET))
+			|| YarnJobClusterExecutor.NAME.equalsIgnoreCase(configuration.get(DeploymentOptions.TARGET));
+		return hasYarnExecutor || yarnJobManager || hasYarnAppId;
+	}
+=======
     @Override
     public boolean isActive(CommandLine commandLine) {
         final String jobManagerOption = commandLine.getOptionValue(addressOption.getOpt(), null);
@@ -64,6 +79,7 @@ abstract class AbstractYarnCli extends AbstractCustomCommandLine {
                                 configuration.get(DeploymentOptions.TARGET));
         return hasYarnExecutor || yarnJobManager || hasYarnAppId;
     }
+>>>>>>> release-1.12
 
     @Override
     public void addGeneralOptions(Options baseOptions) {

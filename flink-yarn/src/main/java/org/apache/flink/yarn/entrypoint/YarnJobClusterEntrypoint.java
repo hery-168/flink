@@ -39,6 +39,62 @@ import java.util.Map;
 /** Entry point for Yarn per-job clusters. */
 public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
 
+<<<<<<< HEAD
+	public YarnJobClusterEntrypoint(Configuration configuration) {
+		super(configuration);
+	}
+
+	@Override
+	protected String getRPCPortRange(Configuration configuration) {
+		return configuration.getString(YarnConfigOptions.APPLICATION_MASTER_PORT);
+	}
+
+	@Override
+	protected DefaultDispatcherResourceManagerComponentFactory createDispatcherResourceManagerComponentFactory(Configuration configuration) throws IOException {
+		return DefaultDispatcherResourceManagerComponentFactory.createJobComponentFactory(
+			YarnResourceManagerFactory.getInstance(),
+			FileJobGraphRetriever.createFrom(
+					configuration,
+					YarnEntrypointUtils.getUsrLibDir(configuration).orElse(null)));
+	}
+
+	// ------------------------------------------------------------------------
+	//  The executable entry point for the Yarn Application Master Process
+	//  for a single Flink job.
+	// ------------------------------------------------------------------------
+
+	public static void main(String[] args) {
+		// startup checks and logging
+		EnvironmentInformation.logEnvironmentInfo(LOG, YarnJobClusterEntrypoint.class.getSimpleName(), args);
+		SignalHandler.register(LOG);
+		JvmShutdownSafeguard.installAsShutdownHook(LOG);
+
+		Map<String, String> env = System.getenv();
+
+		final String workingDirectory = env.get(ApplicationConstants.Environment.PWD.key());
+		Preconditions.checkArgument(
+			workingDirectory != null,
+			"Working directory variable (%s) not set",
+			ApplicationConstants.Environment.PWD.key());
+
+		try {
+			YarnEntrypointUtils.logYarnEnvironmentInformation(env, LOG);
+		} catch (IOException e) {
+			LOG.warn("Could not log YARN environment information.", e);
+		}
+
+		final Configuration dynamicParameters = ClusterEntrypointUtils.parseParametersOrExit(
+			args,
+			new DynamicParametersConfigurationParserFactory(),
+			YarnJobClusterEntrypoint.class);
+		// HeryCode:封装配置对象
+		final Configuration configuration = YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
+		// HeryCode:创建YarnJob执行入口
+		YarnJobClusterEntrypoint yarnJobClusterEntrypoint = new YarnJobClusterEntrypoint(configuration);
+		// HeryCode:
+		ClusterEntrypoint.runClusterEntrypoint(yarnJobClusterEntrypoint);
+	}
+=======
     public YarnJobClusterEntrypoint(Configuration configuration) {
         super(configuration);
     }
@@ -98,4 +154,5 @@ public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
 
         ClusterEntrypoint.runClusterEntrypoint(yarnJobClusterEntrypoint);
     }
+>>>>>>> release-1.12
 }

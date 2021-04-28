@@ -66,6 +66,50 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
             long initializationTimestamp)
             throws Exception {
 
+<<<<<<< HEAD
+		final DefaultSchedulerComponents schedulerComponents = createSchedulerComponents(
+			jobGraph.getScheduleMode(),
+			jobGraph.isApproximateLocalRecoveryEnabled(),
+			jobMasterConfiguration,
+			slotPool,
+			slotRequestTimeout);
+		final RestartBackoffTimeStrategy restartBackoffTimeStrategy = RestartBackoffTimeStrategyFactoryLoader
+			.createRestartBackoffTimeStrategyFactory(
+				jobGraph
+					.getSerializedExecutionConfig()
+					.deserializeValue(userCodeLoader)
+					.getRestartStrategy(),
+				jobMasterConfiguration,
+				jobGraph.isCheckpointingEnabled())
+			.create();
+		log.info("Using restart back off time strategy {} for {} ({}).", restartBackoffTimeStrategy, jobGraph.getName(), jobGraph.getJobID());
+		// HeryCode:返回默认调度器
+		return new DefaultScheduler(
+			log,
+			jobGraph,
+			backPressureStatsTracker,
+			ioExecutor,
+			jobMasterConfiguration,
+			schedulerComponents.getStartUpAction(),
+			futureExecutor,
+			new ScheduledExecutorServiceAdapter(futureExecutor),
+			userCodeLoader,
+			checkpointRecoveryFactory,
+			rpcTimeout,
+			blobWriter,
+			jobManagerJobMetricGroup,
+			shuffleMaster,
+			partitionTracker,
+			schedulerComponents.getSchedulingStrategyFactory(),
+			FailoverStrategyFactoryLoader.loadFailoverStrategyFactory(jobMasterConfiguration),
+			restartBackoffTimeStrategy,
+			new DefaultExecutionVertexOperations(),
+			new ExecutionVertexVersioner(),
+			schedulerComponents.getAllocatorFactory(),
+			executionDeploymentTracker,
+			initializationTimestamp);
+	}
+=======
         final DefaultSchedulerComponents schedulerComponents =
                 createSchedulerComponents(
                         jobGraph.getScheduleMode(),
@@ -112,4 +156,5 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                 executionDeploymentTracker,
                 initializationTimestamp);
     }
+>>>>>>> release-1.12
 }

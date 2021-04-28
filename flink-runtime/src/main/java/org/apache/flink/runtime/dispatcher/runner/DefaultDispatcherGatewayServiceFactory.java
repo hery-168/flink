@@ -56,6 +56,23 @@ class DefaultDispatcherGatewayServiceFactory
             Collection<JobGraph> recoveredJobs,
             JobGraphWriter jobGraphWriter) {
 
+<<<<<<< HEAD
+		final Dispatcher dispatcher;
+		try {
+			// HeryCode: 创建dispatcher 这是真正创建dispatcher的地方
+			dispatcher = dispatcherFactory.createDispatcher(
+				rpcService,
+				fencingToken,
+				recoveredJobs,
+				(dispatcherGateway, scheduledExecutor, errorHandler) -> new NoOpDispatcherBootstrap(),
+				PartialDispatcherServicesWithJobGraphStore.from(partialDispatcherServices, jobGraphWriter));
+		} catch (Exception e) {
+			throw new FlinkRuntimeException("Could not create the Dispatcher rpc endpoint.", e);
+		}
+		// HeryCode: 启动dispatcher dispatcher启动干了什么事情？？1.接受用户作业，2.启动jobmaster
+		// 调用dispatcher的start ，通过RPC，其实调用的是他的onStart 方法
+		dispatcher.start();
+=======
         final Dispatcher dispatcher;
         try {
             dispatcher =
@@ -72,6 +89,7 @@ class DefaultDispatcherGatewayServiceFactory
         }
 
         dispatcher.start();
+>>>>>>> release-1.12
 
         return DefaultDispatcherGatewayService.from(dispatcher);
     }

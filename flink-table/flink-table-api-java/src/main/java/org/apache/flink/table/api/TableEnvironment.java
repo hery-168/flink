@@ -852,6 +852,30 @@ public interface TableEnvironment {
     @Deprecated
     String[] getCompletionHints(String statement, int position);
 
+<<<<<<< HEAD
+	/**
+	 * Evaluates a SQL query on registered tables and retrieves the result as a {@link Table}.
+	 *
+	 * <p>All tables referenced by the query must be registered in the TableEnvironment.
+	 * A {@link Table} is automatically registered when its {@link Table#toString()} method is
+	 * called, for example when it is embedded into a String.
+	 * Hence, SQL queries can directly reference a {@link Table} as follows:
+	 *
+	 * <pre>
+	 * {@code
+	 *   Table table = ...;
+	 *   String tableName = table.toString();
+	 *   // the table is not registered to the table environment
+	 *   tEnv.sqlQuery("SELECT * FROM tableName");
+	 * }
+	 * </pre>
+	 *
+	 * @param query The SQL query to evaluate.
+	 * @return The result of the query as Table
+	 */
+	// HeryCode: 在一个已经注册的表上进行一个查询操作 ，底层通过不同的planner 进行解析翻译
+	Table sqlQuery(String query);
+=======
     /**
      * Evaluates a SQL query on registered tables and retrieves the result as a {@link Table}.
      *
@@ -871,6 +895,7 @@ public interface TableEnvironment {
      * @return The result of the query as Table
      */
     Table sqlQuery(String query);
+>>>>>>> release-1.12
 
     /**
      * Execute the given single statement, and return the execution result.

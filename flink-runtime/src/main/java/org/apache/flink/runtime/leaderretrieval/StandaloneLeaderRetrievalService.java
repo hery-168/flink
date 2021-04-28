@@ -35,6 +35,65 @@ import static org.apache.flink.util.Preconditions.checkState;
  */
 public class StandaloneLeaderRetrievalService implements LeaderRetrievalService {
 
+<<<<<<< HEAD
+	private final Object startStopLock = new Object();
+
+	/** The fix address of the leader. */
+	private final String leaderAddress;
+
+	/** The fix leader ID (leader lock fencing token). */
+	private final UUID leaderId;
+
+	/** Flag whether this service is started. */
+	private boolean started;
+
+	/**
+	 * Creates a StandaloneLeaderRetrievalService with the given leader address.
+	 * The leaderId will be null.
+	 *
+	 * @param leaderAddress The leader's pre-configured address
+	 * @deprecated Use {@link #StandaloneLeaderRetrievalService(String, UUID)} instead
+	 */
+	@Deprecated
+	public StandaloneLeaderRetrievalService(String leaderAddress) {
+		this.leaderAddress = checkNotNull(leaderAddress);
+		this.leaderId = HighAvailabilityServices.DEFAULT_LEADER_ID;
+	}
+
+	/**
+	 * Creates a StandaloneLeaderRetrievalService with the given leader address.
+	 *
+	 * @param leaderAddress The leader's pre-configured address
+	 * @param leaderId      The constant leaderId.
+	 */
+	public StandaloneLeaderRetrievalService(String leaderAddress, UUID leaderId) {
+		this.leaderAddress = checkNotNull(leaderAddress);
+		this.leaderId = checkNotNull(leaderId);
+	}
+
+	// ------------------------------------------------------------------------
+
+	@Override
+	public void start(LeaderRetrievalListener listener) {
+		checkNotNull(listener, "Listener must not be null.");
+
+		synchronized (startStopLock) {
+			checkState(!started, "StandaloneLeaderRetrievalService can only be started once.");
+			started = true;
+
+			// directly notify the listener, because we already know the leading JobManager's address
+			// HeryCode: 通知主 服务
+			listener.notifyLeaderAddress(leaderAddress, leaderId);
+		}
+	}
+
+	@Override
+	public void stop() {
+		synchronized (startStopLock) {
+			started = false;
+		}
+	}
+=======
     private final Object startStopLock = new Object();
 
     /** The fix address of the leader. */
@@ -92,4 +151,5 @@ public class StandaloneLeaderRetrievalService implements LeaderRetrievalService 
             started = false;
         }
     }
+>>>>>>> release-1.12
 }

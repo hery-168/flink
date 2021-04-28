@@ -53,6 +53,159 @@ import static org.apache.flink.util.Preconditions.checkState;
 @Internal
 public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamOperator<IN, OUT>> {
 
+<<<<<<< HEAD
+	private final WatermarkGauge inputWatermarkGauge = new WatermarkGauge();
+
+	/**
+	 * Constructor for initialization, possibly with initial state (recovery / savepoint / etc).
+	 *
+	 * @param env The task environment for this task.
+	 */
+	public OneInputStreamTask(Environment env) throws Exception {
+		super(env);
+	}
+
+	/**
+	 * Constructor for initialization, possibly with initial state (recovery / savepoint / etc).
+	 *
+	 * <p>This constructor accepts a special {@link TimerService}. By default (and if
+	 * null is passes for the time provider) a {@link SystemProcessingTimeService DefaultTimerService}
+	 * will be used.
+	 *
+	 * @param env The task environment for this task.
+	 * @param timeProvider Optionally, a specific time provider to use.
+	 */
+	@VisibleForTesting
+	public OneInputStreamTask(
+			Environment env,
+			@Nullable TimerService timeProvider) throws Exception {
+		super(env, timeProvider);
+	}
+
+	@Override
+	public void init() throws Exception {
+		StreamConfig configuration = getConfiguration();
+		int numberOfInputs = configuration.getNumberOfNetworkInputs();
+
+		if (numberOfInputs > 0) {
+			CheckpointedInputGate inputGate = createCheckpointedInputGate();
+			Counter numRecordsIn = setupNumRecordsInCounter(mainOperator);
+			DataOutput<IN> output = createDataOutput(numRecordsIn);
+			StreamTaskInput<IN> input = createTaskInput(inputGate);
+
+			if (configuration.shouldSortInputs()) {
+				checkState(!configuration.isCheckpointingEnabled(), "Checkpointing is not allowed with sorted inputs.");
+				input = wrapWithSorted(input);
+			}
+
+			getEnvironment().getMetricGroup().getIOMetricGroup().reuseRecordsInputCounter(numRecordsIn);
+
+			inputProcessor = new StreamOneInputProcessor<>(
+				input,
+				output,
+				operatorChain);
+		}
+		mainOperator.getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, this.inputWatermarkGauge);
+		// wrap watermark gauge since registered metrics must be unique
+		getEnvironment().getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, this.inputWatermarkGauge::getValue);
+	}
+
+	private StreamTaskInput<IN> wrapWithSorted(StreamTaskInput<IN> input) {
+		ClassLoader userCodeClassLoader = getUserCodeClassLoader();
+		return new SortingDataInput<>(
+			input,
+			configuration.getTypeSerializerIn(input.getInputIndex(), userCodeClassLoader),
+			configuration.getStateKeySerializer(userCodeClassLoader),
+			configuration.getStatePartitioner(input.getInputIndex(), userCodeClassLoader),
+			getEnvironment().getMemoryManager(),
+			getEnvironment().getIOManager(),
+			getExecutionConfig().isObjectReuseEnabled(),
+			configuration.getManagedMemoryFractionOperatorUseCaseOfSlot(
+				ManagedMemoryUseCase.BATCH_OP,
+				getTaskConfiguration(),
+				userCodeClassLoader),
+			getJobConfiguration(),
+			this
+		);
+	}
+
+	private CheckpointedInputGate createCheckpointedInputGate() {
+		IndexedInputGate[] inputGates = getEnvironment().getAllInputGates();
+
+		return InputProcessorUtil.createCheckpointedInputGate(
+			this,
+			configuration,
+			getCheckpointCoordinator(),
+			inputGates,
+			getEnvironment().getMetricGroup().getIOMetricGroup(),
+			getTaskNameWithSubtaskAndId(),
+			mainMailboxExecutor);
+	}
+
+	private DataOutput<IN> createDataOutput(Counter numRecordsIn) {
+		return new StreamTaskNetworkOutput<>(
+			mainOperator,
+			getStreamStatusMaintainer(),
+			inputWatermarkGauge,
+			numRecordsIn);
+	}
+
+	private StreamTaskInput<IN> createTaskInput(CheckpointedInputGate inputGate) {
+		int numberOfInputChannels = inputGate.getNumberOfInputChannels();
+		StatusWatermarkValve statusWatermarkValve = new StatusWatermarkValve(numberOfInputChannels);
+
+		TypeSerializer<IN> inSerializer = configuration.getTypeSerializerIn1(getUserCodeClassLoader());
+		return new StreamTaskNetworkInput<>(
+			inputGate,
+			inSerializer,
+			getEnvironment().getIOManager(),
+			statusWatermarkValve,
+			0);
+	}
+
+	/**
+	 * The network data output implementation used for processing stream elements
+	 * from {@link StreamTaskNetworkInput} in one input processor.
+	 */
+	private static class StreamTaskNetworkOutput<IN> extends AbstractDataOutput<IN> {
+
+		private final OneInputStreamOperator<IN, ?> operator;
+
+		private final WatermarkGauge watermarkGauge;
+		private final Counter numRecordsIn;
+
+		private StreamTaskNetworkOutput(
+				OneInputStreamOperator<IN, ?> operator,
+				StreamStatusMaintainer streamStatusMaintainer,
+				WatermarkGauge watermarkGauge,
+				Counter numRecordsIn) {
+			super(streamStatusMaintainer);
+
+			this.operator = checkNotNull(operator);
+			this.watermarkGauge = checkNotNull(watermarkGauge);
+			this.numRecordsIn = checkNotNull(numRecordsIn);
+		}
+
+		@Override
+		public void emitRecord(StreamRecord<IN> record) throws Exception {
+			numRecordsIn.inc();
+			operator.setKeyContextElement1(record);
+			// HeryCode:如果是map算子，processElement 应该在StreamMap.java中调用
+			operator.processElement(record);
+		}
+
+		@Override
+		public void emitWatermark(Watermark watermark) throws Exception {
+			watermarkGauge.setCurrentWatermark(watermark.getTimestamp());
+			operator.processWatermark(watermark);
+		}
+
+		@Override
+		public void emitLatencyMarker(LatencyMarker latencyMarker) throws Exception {
+			operator.processLatencyMarker(latencyMarker);
+		}
+	}
+=======
     private final WatermarkGauge inputWatermarkGauge = new WatermarkGauge();
 
     /**
@@ -202,4 +355,5 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
             operator.processLatencyMarker(latencyMarker);
         }
     }
+>>>>>>> release-1.12
 }

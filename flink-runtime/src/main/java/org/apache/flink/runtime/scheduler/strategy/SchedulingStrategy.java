@@ -29,6 +29,7 @@ import java.util.Set;
  * Component which encapsulates the scheduling logic. It can react to execution state changes and
  * partition consumable events. Moreover, it is responsible for resolving task failures.
  */
+// HeryCode:调度策略
 public interface SchedulingStrategy {
 
     /** Called when the scheduling is started (initial scheduling operation). */

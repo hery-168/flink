@@ -20,7 +20,15 @@ package org.apache.flink.runtime.rpc;
 
 import java.util.concurrent.CompletableFuture;
 
+<<<<<<< HEAD
+/**
+ * Interface for self gateways.
+ * 自网关
+ */
+// HeryCode:自身的网关接口(自网关)，自身的代理，用来调用自身的方法，GateWay是用来调用别人的方法
+=======
 /** Interface for self gateways. */
+>>>>>>> release-1.12
 public interface RpcServer extends StartStoppable, MainThreadExecutable, RpcGateway {
 
     /**

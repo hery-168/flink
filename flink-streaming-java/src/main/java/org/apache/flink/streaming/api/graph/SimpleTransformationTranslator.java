@@ -36,6 +36,93 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  */
 @Internal
 public abstract class SimpleTransformationTranslator<OUT, T extends Transformation<OUT>>
+<<<<<<< HEAD
+		implements TransformationTranslator<OUT, T> {
+
+	@Override
+	public Collection<Integer> translateForBatch(final T transformation, final Context context) {
+		checkNotNull(transformation);
+		checkNotNull(context);
+
+		final Collection<Integer> transformedIds =
+				translateForBatchInternal(transformation, context);
+		configure(transformation, context);
+
+		return transformedIds;
+	}
+
+	@Override
+	public Collection<Integer> translateForStreaming(final T transformation, final Context context) {
+		checkNotNull(transformation);
+		checkNotNull(context);
+
+		final Collection<Integer> transformedIds =
+			// HeryCode:执行 translateForStreamingInternal
+				translateForStreamingInternal(transformation, context);
+		configure(transformation, context);
+
+		return transformedIds;
+	}
+
+	/**
+	 * Translates a given {@link Transformation} to its runtime implementation for BATCH-style execution.
+	 *
+	 * @param transformation The transformation to be translated.
+	 * @param context The translation context.
+	 * @return The ids of the "last" {@link StreamNode StreamNodes} in the transformation graph corresponding
+	 * to this transformation. These will be the nodes that a potential following transformation will need to
+	 * connect to.
+	 */
+	protected abstract Collection<Integer> translateForBatchInternal(final T transformation, final Context context);
+
+	/**
+	 * Translates a given {@link Transformation} to its runtime implementation for STREAMING-style execution.
+	 *
+	 * @param transformation The transformation to be translated.
+	 * @param context The translation context.
+	 * @return The ids of the "last" {@link StreamNode StreamNodes} in the transformation graph corresponding
+	 * to this transformation. These will be the nodes that a potential following transformation will need to
+	 * connect to.
+	 */
+	// HeryCode:抽象方法，看实现类，map fliter flatmap 等算子的实现类是 AbstractOneInputTransformationTranslator
+	// keyby union connect 等算子是PartitionTransformationTranslator
+	protected abstract Collection<Integer> translateForStreamingInternal(final T transformation, final Context context);
+
+	private void configure(final T transformation, final Context context) {
+		final StreamGraph streamGraph = context.getStreamGraph();
+		final int transformationId = transformation.getId();
+
+		StreamGraphUtils.configureBufferTimeout(
+				streamGraph,
+				transformationId,
+				transformation,
+				context.getDefaultBufferTimeout());
+
+		if (transformation.getUid() != null) {
+			streamGraph.setTransformationUID(transformationId, transformation.getUid());
+		}
+		if (transformation.getUserProvidedNodeHash() != null) {
+			streamGraph.setTransformationUserHash(
+					transformationId,
+					transformation.getUserProvidedNodeHash());
+		}
+
+		StreamGraphUtils.validateTransformationUid(streamGraph, transformation);
+
+		if (transformation.getMinResources() != null && transformation.getPreferredResources() != null) {
+			streamGraph.setResources(transformationId, transformation.getMinResources(), transformation.getPreferredResources());
+		}
+
+		final StreamNode streamNode = streamGraph.getStreamNode(transformationId);
+		if (streamNode != null
+				&& streamNode.getManagedMemoryOperatorScopeUseCaseWeights().isEmpty()
+				&& streamNode.getManagedMemorySlotScopeUseCases().isEmpty()) {
+			streamNode.setManagedMemoryUseCaseWeights(
+					transformation.getManagedMemoryOperatorScopeUseCaseWeights(),
+					transformation.getManagedMemorySlotScopeUseCases());
+		}
+	}
+=======
         implements TransformationTranslator<OUT, T> {
 
     @Override
@@ -124,4 +211,5 @@ public abstract class SimpleTransformationTranslator<OUT, T extends Transformati
                     transformation.getManagedMemorySlotScopeUseCases());
         }
     }
+>>>>>>> release-1.12
 }

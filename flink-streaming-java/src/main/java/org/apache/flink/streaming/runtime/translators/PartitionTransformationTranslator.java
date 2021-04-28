@@ -70,6 +70,21 @@ public class PartitionTransformationTranslator<OUT>
 
         List<Integer> resultIds = new ArrayList<>();
 
+<<<<<<< HEAD
+		for (Integer inputId: context.getStreamNodeIds(input)) {
+			// HeryCode:生成一个新的虚拟的ID
+			final int virtualId = Transformation.getNewNodeId();
+			// HeryCode:添加一个虚拟分区节点，不会生成StreamNode
+			streamGraph.addVirtualPartitionNode(
+					inputId,
+					virtualId,
+					transformation.getPartitioner(),
+					transformation.getShuffleMode());
+			resultIds.add(virtualId);
+		}
+		return resultIds;
+	}
+=======
         for (Integer inputId : context.getStreamNodeIds(input)) {
             final int virtualId = Transformation.getNewNodeId();
             streamGraph.addVirtualPartitionNode(
@@ -81,4 +96,5 @@ public class PartitionTransformationTranslator<OUT>
         }
         return resultIds;
     }
+>>>>>>> release-1.12
 }

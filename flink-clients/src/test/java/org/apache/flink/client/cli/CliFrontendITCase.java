@@ -38,6 +38,74 @@ import static org.junit.Assert.assertThat;
 /** Integration tests for {@link CliFrontend}. */
 public class CliFrontendITCase {
 
+<<<<<<< HEAD
+	private PrintStream originalPrintStream;
+
+	private ByteArrayOutputStream testOutputStream;
+
+	@Before
+	public void before() {
+		originalPrintStream = System.out;
+		testOutputStream = new ByteArrayOutputStream();
+		System.setOut(new PrintStream(testOutputStream));
+	}
+
+	@After
+	public void finalize() {
+		System.setOut(originalPrintStream);
+	}
+
+	private String getStdoutString() {
+		return testOutputStream.toString();
+	}
+
+	@Test
+	public void configurationIsForwarded() throws Exception {
+		Configuration config = new Configuration();
+		CustomCommandLine commandLine = new DefaultCLI();
+
+		config.set(PipelineOptions.AUTO_WATERMARK_INTERVAL, Duration.ofMillis(42L));
+
+		CliFrontend cliFrontend = new CliFrontend(config, Collections.singletonList(commandLine));
+
+		cliFrontend.parseAndRun(new String[]{"run", "-c", TestingJob.class.getName(), CliFrontendTestUtils.getTestJarPath()});
+
+		assertThat(getStdoutString(), containsString("Watermark interval is 42"));
+	}
+
+	// HeryCode: 测试parseAndRun
+	@Test
+	public void commandlineOverridesConfiguration() throws Exception {
+		Configuration config = new Configuration();
+
+		// we use GenericCli because it allows specifying arbitrary options via "-Dfoo=bar" syntax
+		CustomCommandLine commandLine = new GenericCLI(config, "/dev/null");
+
+		config.set(PipelineOptions.AUTO_WATERMARK_INTERVAL, Duration.ofMillis(42L));
+
+		CliFrontend cliFrontend = new CliFrontend(config, Collections.singletonList(commandLine));
+
+		cliFrontend.parseAndRun(new String[]{
+				"run",
+				"-t", LocalExecutor.NAME,
+				"-c", TestingJob.class.getName(),
+				"-D" + PipelineOptions.AUTO_WATERMARK_INTERVAL.key() + "=142",
+				CliFrontendTestUtils.getTestJarPath()});
+
+		assertThat(getStdoutString(), containsString("Watermark interval is 142"));
+	}
+
+	/**
+	 * Testing job that the watermark interval from the {@link org.apache.flink.api.common.ExecutionConfig}.
+	 */
+	public static class TestingJob {
+		public static void main(String[] args) {
+			StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+			System.out.println(
+					"Watermark interval is " + env.getConfig().getAutoWatermarkInterval());
+		}
+	}
+=======
     private PrintStream originalPrintStream;
 
     private ByteArrayOutputStream testOutputStream;
@@ -111,4 +179,5 @@ public class CliFrontendITCase {
                     "Watermark interval is " + env.getConfig().getAutoWatermarkInterval());
         }
     }
+>>>>>>> release-1.12
 }

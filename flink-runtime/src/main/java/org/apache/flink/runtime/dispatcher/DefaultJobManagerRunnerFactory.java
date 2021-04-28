@@ -63,6 +63,29 @@ public enum DefaultJobManagerRunnerFactory implements JobManagerRunnerFactory {
                 ShuffleServiceLoader.loadShuffleServiceFactory(configuration)
                         .createShuffleMaster(configuration);
 
+<<<<<<< HEAD
+		final JobMasterServiceFactory jobMasterFactory = new DefaultJobMasterServiceFactory(
+			jobMasterConfiguration,
+			slotPoolFactory,
+			rpcService,
+			highAvailabilityServices,
+			jobManagerServices,
+			heartbeatServices,
+			jobManagerJobMetricGroupFactory,
+			fatalErrorHandler,
+			schedulerNGFactory,
+			shuffleMaster);
+		// HeryCode:JobManager 的实现 核心类
+		return new JobManagerRunnerImpl(
+			jobGraph,
+			jobMasterFactory,
+			highAvailabilityServices,
+			jobManagerServices.getLibraryCacheManager().registerClassLoaderLease(jobGraph.getJobID()),
+			jobManagerServices.getScheduledExecutorService(),
+			fatalErrorHandler,
+			initializationTimestamp);
+	}
+=======
         final JobMasterServiceFactory jobMasterFactory =
                 new DefaultJobMasterServiceFactory(
                         jobMasterConfiguration,
@@ -87,4 +110,5 @@ public enum DefaultJobManagerRunnerFactory implements JobManagerRunnerFactory {
                 fatalErrorHandler,
                 initializationTimestamp);
     }
+>>>>>>> release-1.12
 }

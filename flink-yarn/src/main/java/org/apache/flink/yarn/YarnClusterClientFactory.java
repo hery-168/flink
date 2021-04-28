@@ -41,6 +41,56 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** A {@link ClusterClientFactory} for a YARN cluster. */
 @Internal
+<<<<<<< HEAD
+public class YarnClusterClientFactory extends AbstractContainerizedClusterClientFactory<ApplicationId> {
+
+	@Override
+	public boolean isCompatibleWith(Configuration configuration) {
+		checkNotNull(configuration);
+		final String deploymentTarget = configuration.getString(DeploymentOptions.TARGET);
+		return YarnDeploymentTarget.isValidYarnTarget(deploymentTarget);
+	}
+
+	@Override
+	public YarnClusterDescriptor createClusterDescriptor(Configuration configuration) {
+		checkNotNull(configuration);
+
+		final String configurationDirectory =
+			configuration.get(DeploymentOptionsInternal.CONF_DIR);
+		YarnLogConfigUtil.setLogConfigFileInConfig(configuration, configurationDirectory);
+		// todo  获取集群描述
+		return getClusterDescriptor(configuration);
+	}
+
+	@Nullable
+	@Override
+	public ApplicationId getClusterId(Configuration configuration) {
+		checkNotNull(configuration);
+		final String clusterId = configuration.getString(YarnConfigOptions.APPLICATION_ID);
+		return clusterId != null ? ConverterUtils.toApplicationId(clusterId) : null;
+	}
+
+	@Override
+	public Optional<String> getApplicationTargetName() {
+		return Optional.of(YarnDeploymentTarget.APPLICATION.getName());
+	}
+
+	private YarnClusterDescriptor getClusterDescriptor(Configuration configuration) {
+		//HeryCode 创建yarn 的客户端 YarnClient
+		final YarnClient yarnClient = YarnClient.createYarnClient();
+		final YarnConfiguration yarnConfiguration = new YarnConfiguration();
+		//HeryCode  初始化和启动YarnClient
+		yarnClient.init(yarnConfiguration);
+		yarnClient.start();
+		//HeryCode  返回 YarnCluster 描述器
+		return new YarnClusterDescriptor(
+			configuration,
+			yarnConfiguration,
+			yarnClient,
+			YarnClientYarnClusterInformationRetriever.create(yarnClient),
+			false);
+	}
+=======
 public class YarnClusterClientFactory
         extends AbstractContainerizedClusterClientFactory<ApplicationId> {
 
@@ -88,4 +138,5 @@ public class YarnClusterClientFactory
                 YarnClientYarnClusterInformationRetriever.create(yarnClient),
                 false);
     }
+>>>>>>> release-1.12
 }

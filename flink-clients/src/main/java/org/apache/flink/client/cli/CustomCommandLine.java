@@ -27,6 +27,15 @@ import org.apache.commons.cli.Options;
 /** Custom command-line interface to load hooks for the command-line interface. */
 public interface CustomCommandLine {
 
+<<<<<<< HEAD
+	/**
+	 * Signals whether the custom command-line wants to execute or not.
+	 * 指示自定义命令行是否要执行
+	 * @param commandLine The command-line options
+	 * @return True if the command-line wants to run, False otherwise
+	 */
+	boolean isActive(CommandLine commandLine);
+=======
     /**
      * Signals whether the custom command-line wants to execute or not.
      *
@@ -34,6 +43,7 @@ public interface CustomCommandLine {
      * @return True if the command-line wants to run, False otherwise
      */
     boolean isActive(CommandLine commandLine);
+>>>>>>> release-1.12
 
     /**
      * Gets the unique identifier of this CustomCommandLine.
